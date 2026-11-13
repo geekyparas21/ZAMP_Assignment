@@ -20,7 +20,9 @@ uploads/
 
 # Node / frontend build
 node_modules/
-frontend/dist/
+# frontend/dist IS committed on purpose: Render's Python runtime has no
+# Node, so the built UI must be in the repo for the host to serve it.
+# Rebuild with `cd frontend && npm run build` before committing UI changes.
 .vite/
 
 # OS / editor

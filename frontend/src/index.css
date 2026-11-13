@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #0b1220;
+  --color-ink-900: #111827;
+  --color-ink-700: #374151;
+  --color-ink-500: #6b7280;
+  --color-ink-300: #d1d5db;
+  --color-ink-100: #f3f4f6;
+  --color-ink-50:  #f9fafb;
+
+  --color-brand-700: #1d4ed8;
+  --color-brand-600: #2563eb;
+  --color-brand-50:  #eff6ff;
+
+  --color-approved-700: #15803d;
+  --color-approved-100: #dcfce7;
+  --color-review-700:   #b45309;
+  --color-review-100:   #fef3c7;
+  --color-rejected-700: #b91c1c;
+  --color-rejected-100: #fee2e2;
+  --color-failed-700:   #4b5563;
+  --color-failed-100:   #e5e7eb;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--color-ink-50);
+  color: var(--color-ink-900);
+  font-feature-settings: "tnum" 0;
+}
+
+/* Amounts and identifiers line up in columns when digits are tabular. */
+.tnum { font-variant-numeric: tabular-nums; }
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45); }
+  70%  { box-shadow: 0 0 0 7px rgba(37, 99, 235, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+.running-ring { animation: pulse-ring 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .running-ring { animation: none; }
+  * { transition-duration: 0.01ms !important; }
+}

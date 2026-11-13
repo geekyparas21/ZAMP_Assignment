@@ -253,7 +253,26 @@ def reset_demo_data(session: Session = Depends(get_session)) -> dict:
 # Frontend (mounted last so it cannot shadow the API)
 # ---------------------------------------------------------------------------
 if FRONTEND_DIST.exists():
-    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"),
+              name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_spa(full_path: str) -> FileResponse:
+        """Serve the built single-page app.
+
+        Client-side routes such as /dashboard do not exist as files, so any
+        path that is not an API route or a real asset returns index.html and
+        lets the router in the browser take over. Without this, refreshing on
+        any page but the root would 404.
+        """
+        if full_path.startswith(("api/", "health", "docs", "redoc", "openapi.json")):
+            raise HTTPException(status_code=404, detail="Not found")
+
+        candidate = (FRONTEND_DIST / full_path).resolve()
+        if (full_path and candidate.is_file()
+                and FRONTEND_DIST.resolve() in candidate.parents):
+            return FileResponse(candidate)
+        return FileResponse(FRONTEND_DIST / "index.html")
 else:
     @app.get("/")
     def placeholder() -> dict:
