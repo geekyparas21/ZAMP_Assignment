@@ -109,6 +109,8 @@ class ExtractedInvoice:
     document_type: str = "invoice"
     vendor_name: str | None = None
     vendor_gstin: str | None = None
+    bill_to_name: str | None = None
+    bill_to_gstin: str | None = None
     invoice_number: str | None = None
     invoice_date: str | None = None
     due_date: str | None = None
@@ -133,6 +135,8 @@ class NormalisedInvoice:
     raw: ExtractedInvoice
     vendor_name: str | None = None
     vendor_gstin: str | None = None
+    bill_to_name: str | None = None
+    bill_to_gstin: str | None = None
     invoice_number: str | None = None
     invoice_number_normalised: str | None = None
     invoice_date: date | None = None

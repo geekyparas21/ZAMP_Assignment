@@ -49,10 +49,22 @@ def match_po(
     detail = ", ".join(f"{c.po.po_number} ({c.score:.0%})" for c in candidates[:3])
 
     if not candidates:
-        findings.append(Finding("PO_NOT_FOUND", STAGE, {
-            "po_reference": inv.po_reference or "(none quoted)",
-            "normalised": inv.po_reference_normalised or "-",
-        }))
+        # Two different statements, and a reviewer needs to know which: a PO
+        # number that does not exist is a data error, whereas no PO at all may
+        # simply be a purchase nobody raised one for.
+        if inv.po_reference_normalised:
+            findings.append(Finding("PO_NOT_FOUND", STAGE, {
+                "po_reference": inv.po_reference or "(none quoted)",
+                "normalised": inv.po_reference_normalised or "-",
+            }))
+        else:
+            findings.append(Finding("NO_PO_FOUND", STAGE, {
+                "search_scope": (f"for {vendor.legal_name}" if vendor is not None
+                                 else "on the system (the vendor is unknown, so "
+                                      "there are no POs to search)"),
+                "vendor_known": vendor is not None,
+                "invoice_total": format_inr(inv.total),
+            }))
         return POMatch(None, "none", 0.0, []), findings
 
     min_score = rules.number("po_matching.inference_min_score")
@@ -103,20 +115,27 @@ def _rank_candidates(
     for po in pool:
         amount_score = _amount_similarity(inv.total, po)
         line_score = _line_similarity(inv, po)
+        comparable = _lines_are_comparable(inv, po)
         if span > 0 and newest:
             recency = 1.0 - ((newest - po.issue_date).days / span)
         else:
             recency = 1.0
         components = {
             "amount_similarity": round(amount_score, 4),
-            "line_similarity": round(line_score, 4),
+            "line_similarity": round(line_score, 4) if comparable else None,
             "recency": round(recency, 4),
         }
-        score = round(
-            amount_score * 0.50 + line_score * 0.35 + recency * 0.15, 4)
+        # Where there is no line detail on either side, line similarity is
+        # unknown, not zero. Scoring an unknown as zero would permanently cap
+        # a value-only PO at 0.65 and make it uninferrable however exactly its
+        # amount matched, so its weight is redistributed over what we do know.
+        if comparable:
+            score = amount_score * 0.50 + line_score * 0.35 + recency * 0.15
+        else:
+            score = (amount_score * 0.50 + recency * 0.15) / 0.65
         candidates.append(POCandidate(
-            po=po, score=score, components=components,
-            rationale=_rationale(amount_score, line_score),
+            po=po, score=round(score, 4), components=components,
+            rationale=_rationale(amount_score, line_score if comparable else None),
         ))
 
     candidates.sort(key=lambda c: c.score, reverse=True)
@@ -141,6 +160,11 @@ def _amount_similarity(invoice_total: Decimal, po: PurchaseOrder) -> float:
     return max(0.0, 1.0 - overage)
 
 
+def _lines_are_comparable(inv: NormalisedInvoice, po: PurchaseOrder) -> bool:
+    """True only when both sides actually carry descriptions to compare."""
+    return bool(po.lines) and any(l.description for l in inv.lines)
+
+
 def _line_similarity(inv: NormalisedInvoice, po: PurchaseOrder) -> float:
     """Mean best-match description similarity across the invoice's lines."""
     descriptions = [l.description for l in inv.lines if l.description]
@@ -156,13 +180,16 @@ def _line_similarity(inv: NormalisedInvoice, po: PurchaseOrder) -> float:
     return sum(scores) / len(scores)
 
 
-def _rationale(amount_score: float, line_score: float) -> str:
+def _rationale(amount_score: float, line_score: float | None) -> str:
     bits = []
     if amount_score > 0.95:
         bits.append("the amount matches the remaining balance almost exactly")
     elif amount_score > 0.7:
         bits.append("the amount fits within the remaining balance")
-    if line_score > 0.85:
+    if line_score is None:
+        bits.append("the PO carries no line detail, so only the amount could "
+                    "be compared")
+    elif line_score > 0.85:
         bits.append("the line items match the PO lines")
     elif line_score > 0.5:
         bits.append("the line items are similar to the PO lines")

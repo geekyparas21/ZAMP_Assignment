@@ -42,8 +42,10 @@ flowchart TD
 
     S4[4 · VALIDATION and NORMALISATION<br/>dates, amounts, invoice no., PO ref<br/>line total = qty x price<br/>sum of lines = subtotal<br/>subtotal + tax = total<br/>tax-inclusive detection] --> S5
 
-    S5[5 · VENDOR VERIFICATION<br/>GSTIN exact match, else fuzzy<br/>name/alias score<br/>status + bank account check]
-    S5 -->|blocked / not on master| R1[REJECTED]
+    S5[5 · VENDOR VERIFICATION<br/>bill-to: is it addressed to us?<br/>GSTIN exact match, else fuzzy<br/>name/alias score<br/>status + bank account check]
+    S5 -->|status blocked| R1[REJECTED<br/>VENDOR_BLOCKED]
+    S5 -->|not on the master| N3[NEEDS_REVIEW<br/>VENDOR_UNKNOWN<br/>route to onboarding]
+    S5 -->|billed to someone else| N4[NEEDS_REVIEW<br/>BILLED_TO_OTHER_ENTITY]
     S5 --> S6
 
     S6[6 · DUPLICATE DETECTION<br/>a. same file hash<br/>b. same vendor + normalised inv. no.<br/>c. same vendor + amount, within 7 days]
@@ -51,7 +53,8 @@ flowchart TD
     S6 --> S7
 
     S7[7 · PO MATCHING<br/>explicit ref: normalise and look up<br/>missing/unknown: infer from vendor +<br/>open POs + amount + line similarity,<br/>ranked and scored]
-    S7 -->|no candidate| N1[NEEDS_REVIEW<br/>PO_NOT_FOUND]
+    S7 -->|no PO quoted, none inferable| N1[NEEDS_REVIEW<br/>NO_PO_FOUND]
+    S7 -->|quoted PO does not exist| N1b[NEEDS_REVIEW<br/>PO_NOT_FOUND]
     S7 -->|top two scores close| N2[NEEDS_REVIEW<br/>PO_INFERRED_AMBIGUOUS<br/>candidates listed]
     S7 --> S8
 
@@ -70,11 +73,30 @@ flowchart TD
     R1 --> S10
     R2 --> S10
     N1 --> S10
+    N1b --> S10
     N2 --> S10
+    N3 --> S10
+    N4 --> S10
 
     S10[10 · OUTPUT<br/>decision card, reason codes + evidence,<br/>recommended next action,<br/>draft email, audit JSON] --> END[Run persisted ·<br/>visible on dashboard]
     F --> END
+    END -.->|reference data edited,<br/>then Re-run| S4
 ```
+
+**An unknown vendor does not stop the pipeline.** Stages 6 to 8 still run and
+still report — duplicate detection, PO matching and reconciliation each say
+what they found, or why they could not look — so a reviewer sees the whole
+picture rather than only the first thing that was wrong. `VENDOR_UNKNOWN` is
+simply shown as the **primary** reason, because who is being paid has to be
+settled before anything about the amount matters.
+
+The dotted edge back into stage 4 is the **Re-run** button. Adding a vendor or
+a PO on the Reference Data page and re-running decides the same document again
+against the reference data as it now stands. The stored model response is
+replayed rather than the document re-read, so a re-run spends no quota and the
+only thing that can have changed is the reference data — which is the whole
+point of pressing it. The superseded run's ledger entry is withdrawn first;
+without that, the document would match itself as a duplicate.
 
 Every stage streams `pending → running → passed | warning | failed | skipped` over **Server-Sent Events**, and is persisted as a `RunStep` row with start/end time, duration, a one-line human summary and a structured detail payload.
 
@@ -93,7 +115,9 @@ Every stage streams `pending → running → passed | warning | failed | skipped
 
 `REJECT > REVIEW > APPROVE`
 
-The engine collects **all** findings from every stage — it never short-circuits, because a reviewer should see everything that was wrong, not just the first thing. The outcome is the highest severity present. Reason codes are then sorted by severity and by their declaration order in the table below, so the "top reason" shown on the dashboard is always the most consequential one.
+The engine collects **all** findings from every stage — it never short-circuits, because a reviewer should see everything that was wrong, not just the first thing. The outcome is the highest severity present. Reason codes are then sorted by severity and by their declaration order in the table below, so the "top reason" shown on the dashboard is always the most consequential one, and the decision card lists **every** finding in that same order, each with the evidence that produced it. The first is badged **Primary** — with four or five findings on one invoice, which of them drove the outcome is not otherwise obvious.
+
+Within `NEEDS_REVIEW`, the two counterparty codes — `VENDOR_UNKNOWN` and `BILLED_TO_OTHER_ENTITY` — are declared first on purpose. Until it is settled who is being paid, and that the invoice is addressed to us at all, no amount-level finding is the most useful thing to put in front of a reviewer.
 
 ---
 
@@ -125,25 +149,27 @@ Every code carries a `severity`, a human-readable message template, and the **ev
 | `NOT_AN_INVOICE` | Model flags the document as a quote / receipt / credit note / other | Detected document type |
 | `DUPLICATE_CONFIRMED_HASH` | Byte-identical file already processed | Original run id, date, outcome |
 | `DUPLICATE_CONFIRMED_NUMBER` | Same vendor + same normalised invoice number in ledger | Both raw numbers, the normalised form, original date and amount |
-| `VENDOR_BLOCKED` | Matched vendor has status `blocked` | Vendor id, status |
-| `VENDOR_NOT_ON_MASTER` | No vendor match scores ≥ 0.70 | Invoice vendor name, best candidate and score |
+| `VENDOR_BLOCKED` | Vendor **is** on the master, with status `blocked` | Vendor id, status |
 | `PO_CLOSED` | Referenced PO has status `closed` | PO number, status, amount already invoiced |
 
 ### NEEDS_REVIEW
 
 | Code | Fires when | Evidence shown |
 |---|---|---|
+| `VENDOR_UNKNOWN` | No vendor on the master matches by GSTIN, and no name scores ≥ 0.70 | Invoice vendor name and GSTIN, best candidate and its score, the threshold — plus the invoice number, date and amount the onboarding email is written from |
+| `BILLED_TO_OTHER_ENTITY` | The "Bill To / Buyer" is neither our GSTIN nor our name above 0.70 | Buyer name and GSTIN as read, our name and GSTIN, the similarity score |
 | `PO_OVERBILLED` | Invoice total exceeds PO remaining balance + tolerance | PO total, invoiced to date, remaining, invoice total, overage |
 | `PRICE_VARIANCE_EXCEEDS_TOLERANCE` | A line's unit price exceeds the PO price by more than 5% | Per line: description, PO price, invoice price, % variance |
 | `QTY_VARIANCE_EXCEEDS_TOLERANCE` | A line's quantity exceeds PO quantity by more than 2% | Per line: PO qty, invoice qty, difference |
 | `TOTAL_VARIANCE_EXCEEDS_TOLERANCE` | Total falls outside the ±2% / ±₹500 band | Expected, actual, difference, band applied |
 | `VENDOR_BANK_MISMATCH` | Bank account on the invoice differs from vendor master | Last 4 on invoice vs last 4 on master |
-| `VENDOR_PENDING` | Vendor status is `pending` | Vendor id, status |
+| `VENDOR_PENDING` | Vendor is on the master but onboarding is incomplete (`pending`) | Vendor id, status |
 | `VENDOR_FUZZY_MATCH_LOW` | Name match score between 0.70 and 0.88 | Invoice name, matched name, score |
 | `GSTIN_MISMATCH` | GSTIN on invoice differs from master GSTIN for the matched vendor | Both GSTINs |
 | `GSTIN_INVALID_FORMAT` | GSTIN fails the 15-character format/checksum test | The GSTIN as read |
 | `DUPLICATE_SUSPECTED` | Same vendor + same total within 7 days, different number | Both invoice numbers, dates, amount |
-| `PO_NOT_FOUND` | A reference was present but matched no PO, and inference found nothing | PO ref as written and normalised |
+| `NO_PO_FOUND` | No PO is quoted and none could be inferred — including when the vendor is unknown, so there are no POs to search | Where the search looked, and the invoice total |
+| `PO_NOT_FOUND` | A reference *was* printed but matched no PO, and inference found nothing | PO ref as written and normalised |
 | `PO_INFERRED_AMBIGUOUS` | Two or more inference candidates score close together | Each candidate with its score and score components |
 | `PO_INFERRED_LOW_CONFIDENCE` | Best inference candidate scores below 0.75 | Candidate, score, components |
 | `PO_VENDOR_MISMATCH` | The PO belongs to a different vendor than the invoice | PO vendor, invoice vendor |
@@ -164,6 +190,7 @@ Every code carries a `severity`, a human-readable message template, and the **ev
 | `PO_INFERRED_HIGH_CONFIDENCE` | The PO was inferred rather than quoted — stated explicitly on the decision card |
 | `PARTIAL_INVOICE_AGAINST_PO` | The invoice bills part of an open PO; remaining balance is shown |
 | `TAX_INCLUSIVE_PRESENTATION` | Prices are presented inclusive of GST; normalised before comparison |
+| `PO_HAS_NO_LINE_DETAIL` | The matched PO holds a committed value with no line items (a blanket or service PO), so only the total could be reconciled |
 | `SCANNED_DOCUMENT` | No text layer was found; the vision extraction path was used |
 
 ### FAILED
@@ -189,5 +216,8 @@ Every code carries a `severity`, a human-readable message template, and the **ev
 | 3b | Different number, same amount, within 7 days | `NEEDS_REVIEW` | `DUPLICATE_SUSPECTED` |
 | 4a | Total off by ₹180 from freight/rounding | `APPROVED` | `TOTAL_VARIANCE_WITHIN_TOLERANCE` |
 | 4b | One line's unit price raised 8% against the PO | `NEEDS_REVIEW` | `PRICE_VARIANCE_EXCEEDS_TOLERANCE` |
+
+| 9 | Unknown supplier, correctly billed to us, no PO quoted | `NEEDS_REVIEW`, then `APPROVED` after onboarding + a PO | `VENDOR_UNKNOWN` (primary), `NO_PO_FOUND`; then `PO_INFERRED_HIGH_CONFIDENCE` |
+| — | Consumer receipt — unknown seller, billed to an individual | `NEEDS_REVIEW` | `VENDOR_UNKNOWN` (primary), `BILLED_TO_OTHER_ENTITY`, `NO_PO_FOUND` |
 
 Additional cases that must be handled without crashing (not featured in the video): non-PDF upload, encrypted or corrupt PDF, a quotation instead of an invoice, a blocked vendor, a bank-detail mismatch, and an LLM timeout.

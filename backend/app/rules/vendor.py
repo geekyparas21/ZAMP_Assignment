@@ -4,6 +4,19 @@ GSTIN is tried first because it is an identifier; names are a fallback because
 they are a description. A vendor whose name on the invoice is a short form of
 the legal name on the master ("Bharat Steel Ind.") must still be recognised,
 while an unrelated company must not be.
+
+Three distinct conclusions come out of this stage, and the difference between
+them is the difference between a held invoice and a refused one:
+
+  * not on the master at all -> VENDOR_UNKNOWN -> NEEDS_REVIEW. A supplier we
+    have never paid may simply be new. Onboarding is a process, not a refusal.
+  * on the master, status blocked -> VENDOR_BLOCKED -> REJECTED. Somebody has
+    already decided not to pay this company.
+  * on the master, onboarding incomplete -> VENDOR_PENDING -> NEEDS_REVIEW.
+
+The stage also answers a question that precedes all of them: is this invoice
+even addressed to us? A consumer receipt made out to an individual is a
+perfectly valid document that is not ours to pay.
 """
 
 from __future__ import annotations
@@ -13,6 +26,7 @@ from difflib import SequenceMatcher
 
 from ..config import Rules
 from ..domain import NormalisedInvoice, Vendor, VendorMatch
+from ..money import format_inr
 from .codes import Finding
 
 STAGE = "vendor"
@@ -65,10 +79,48 @@ def name_similarity(a: str, b: str) -> float:
     return round(max(ratio, overlap, subset_bonus), 4)
 
 
+def check_bill_to(inv: NormalisedInvoice, rules: Rules) -> list[Finding]:
+    """Is this invoice addressed to us at all?
+
+    Either identifier is enough to accept: our GSTIN, or our name above the
+    floor. Only when neither matches is the invoice taken to be somebody
+    else's. A document that names no buyer raises nothing - absence of
+    evidence is not evidence of a different buyer, and the missing-field
+    checks already cover an invoice that says nothing about anybody.
+    """
+    our_name = str(rules.get("company.legal_name"))
+    our_gstin = str(rules.get("company.gstin")).upper()
+    our_names = [our_name, *rules.strings("company.aliases")]
+    floor = rules.number("company.bill_to_match_floor")
+
+    if not inv.bill_to_name and not inv.bill_to_gstin:
+        return []
+
+    if inv.bill_to_gstin and inv.bill_to_gstin.upper() == our_gstin:
+        return []
+
+    score = max((name_similarity(inv.bill_to_name, candidate)
+                 for candidate in our_names), default=0.0) if inv.bill_to_name else 0.0
+    if score >= floor:
+        return []
+
+    gstin_clause = ""
+    if inv.bill_to_gstin:
+        gstin_clause = (f", and the buyer GSTIN {inv.bill_to_gstin} is not ours "
+                        f"({our_gstin})")
+    return [Finding("BILLED_TO_OTHER_ENTITY", STAGE, {
+        "bill_to": inv.bill_to_name or "(no name, GSTIN only)",
+        "bill_to_gstin": inv.bill_to_gstin,
+        "our_name": our_name, "our_gstin": our_gstin,
+        "score": round(score, 4), "floor": floor,
+        "gstin_clause": gstin_clause,
+    })]
+
+
 def match_vendor(
     inv: NormalisedInvoice, vendors: list[Vendor], rules: Rules
 ) -> tuple[VendorMatch, list[Finding]]:
-    findings: list[Finding] = []
+    findings: list[Finding] = list(check_bill_to(inv, rules))
     auto = rules.number("vendor.name_match_auto_accept")
     floor = rules.number("vendor.name_match_review_floor")
 
@@ -103,10 +155,22 @@ def match_vendor(
 
     if not scored or scored[0][0] < floor:
         best_score = scored[0][0] if scored else 0.0
-        best_name = scored[0][1].legal_name if scored else "-"
-        findings.append(Finding("VENDOR_NOT_ON_MASTER", STAGE, {
+        best_name = scored[0][1].legal_name if scored else "(the master is empty)"
+        # The GSTIN is worth saying out loud: it is the identifier procurement
+        # will onboard against, and it rules out a stale name on the master.
+        gstin_clause = (f", and no vendor holds GSTIN {inv.vendor_gstin}"
+                        if inv.vendor_gstin else
+                        ", and the invoice shows no GSTIN to identify them by")
+        findings.append(Finding("VENDOR_UNKNOWN", STAGE, {
             "invoice_vendor": inv.vendor_name or "(not read)",
+            "invoice_gstin": inv.vendor_gstin,
             "best_name": best_name, "best_score": best_score, "floor": floor,
+            "gstin_clause": gstin_clause,
+            "invoice_number": inv.invoice_number,
+            "invoice_date": (inv.invoice_date.isoformat()
+                             if inv.invoice_date else None),
+            "invoice_total": format_inr(inv.total) if inv.total is not None else None,
+            "currency": inv.currency,
         }))
         return VendorMatch(None, "none", best_score, candidates), findings
 

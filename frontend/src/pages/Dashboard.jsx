@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Inbox, RefreshCw, Search } from 'lucide-react'
+import { Inbox, RefreshCw, RotateCw, Search } from 'lucide-react'
 
 import { api } from '../api'
 import {
@@ -24,6 +24,21 @@ export default function Dashboard() {
   const [search, setSearch] = useState('')
   const [error, setError] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [rerunning, setRerunning] = useState(null)
+
+  // Decides the same document again against the reference data as it stands
+  // now, so "we have onboarded them" can be shown rather than asserted.
+  async function rerun(runId) {
+    setRerunning(runId)
+    setError(null)
+    try {
+      const { run_id: next } = await api.rerun(runId)
+      navigate(`/runs/${next}`)
+    } catch (err) {
+      setError(err.message)
+      setRerunning(null)
+    }
+  }
 
   const load = useCallback(async () => {
     setRefreshing(true)
@@ -150,6 +165,9 @@ export default function Dashboard() {
                   <th className="px-4 py-2.5 font-medium">Outcome</th>
                   <th className="px-4 py-2.5 font-medium">Top reason</th>
                   <th className="px-4 py-2.5 text-right font-medium">Took</th>
+                  <th className="px-4 py-2.5 text-right font-medium">
+                    <span className="sr-only">Re-run</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -182,6 +200,25 @@ export default function Dashboard() {
                     </td>
                     <td className="tnum px-4 py-2.5 text-right text-muted">
                       {formatDuration(run.duration_ms)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      {run.status !== 'running' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Decide this invoice again against the reference data as it is now"
+                          disabled={rerunning === run.id}
+                          onClick={(event) => {
+                            // The row itself navigates to the run; re-running
+                            // is a different intent.
+                            event.stopPropagation()
+                            rerun(run.id)
+                          }}
+                        >
+                          <RotateCw className={`h-3.5 w-3.5 ${rerunning === run.id ? 'animate-spin' : ''}`} />
+                          Re-run
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}

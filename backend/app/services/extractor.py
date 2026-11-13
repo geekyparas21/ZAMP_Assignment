@@ -54,6 +54,10 @@ class ExtractionResult:
     raw_response: dict[str, Any] = field(default_factory=dict)
     input_kind: str = "text"
     warnings: list[str] = field(default_factory=list)
+    #: True when this is a stored response being replayed rather than a live
+    #: model call, so the quota counter is not credited with a call that never
+    #: left the building.
+    replayed: bool = False
 
     def redacted_log(self) -> dict[str, Any]:
         """What gets persisted to the run's step detail. No secrets."""
@@ -64,7 +68,44 @@ class ExtractionResult:
                        "total": self.total_tokens},
             "response": self.raw_response,
             "warnings": self.warnings,
+            "replayed": self.replayed,
         }
+
+
+class RecordedExtractor:
+    """Replays an extraction that was already paid for.
+
+    A re-run exists to ask "what would we decide now, with the reference data
+    as it stands?" - not to re-read the document. Replaying the stored model
+    response makes a re-run free, instant and deterministic, and it isolates
+    the variable under test: if the outcome changes, it changed because the
+    vendor master or the POs changed, not because the model read the page
+    differently the second time.
+    """
+
+    def __init__(self, stored: dict[str, Any]) -> None:
+        self._stored = stored or {}
+
+    @property
+    def usable(self) -> bool:
+        return bool(self._stored.get("response"))
+
+    def extract(self, document: DocumentInfo) -> ExtractionResult:
+        stored = self._stored
+        invoice, warnings = _parse(stored["response"])
+        tokens = stored.get("tokens") or {}
+        return ExtractionResult(
+            invoice=invoice,
+            model=stored.get("model", "recorded"),
+            attempts=int(stored.get("attempts", 1) or 1),
+            duration_ms=0,
+            prompt_tokens=0, response_tokens=0, total_tokens=0,
+            raw_response=stored["response"],
+            input_kind=stored.get("input_kind", "text"),
+            replayed=True,
+            warnings=[*warnings, "Extraction replayed from the earlier run - "
+                                 "no new model call was made."],
+        )
 
 
 class Extractor(Protocol):

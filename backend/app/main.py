@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func
 from sqlmodel import Session, select
 
@@ -29,6 +31,7 @@ from .models import (LedgerRow, LLMCall, POLineRow, PurchaseOrderRow,  # noqa: E
 from .money import format_inr  # noqa: E402
 from .pipeline.events import bus  # noqa: E402
 from .rules.codes import all_codes  # noqa: E402
+from .rules.validation import gstin_problem  # noqa: E402
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
 log = logging.getLogger(__name__)
@@ -105,6 +108,192 @@ def list_vendors(session: Session = Depends(get_session)) -> list[dict]:
         }
         for row in rows
     ]
+
+
+class NewVendor(BaseModel):
+    """What onboarding a vendor from the screen requires.
+
+    Deliberately the same fields as the seed CSV: a vendor added here is
+    indistinguishable from one that was always on the master, because anything
+    else would make the demo a special case rather than a demonstration.
+    """
+
+    legal_name: str = Field(min_length=2, max_length=200)
+    gstin: str = Field(min_length=15, max_length=15)
+    aliases: list[str] = Field(default_factory=list)
+    status: str = "approved"
+    payment_terms: str = "Net 30"
+    bank_account_last4: str = ""
+    vendor_id: str | None = None
+
+    @field_validator("legal_name", "payment_terms")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("gstin")
+    @classmethod
+    def _check_gstin(cls, value: str) -> str:
+        """The same format and checksum test the pipeline applies to invoices.
+
+        Validating here, rather than only on the invoice, means a typo in the
+        vendor master is caught where it is made instead of surfacing later as
+        a GSTIN_MISMATCH against an invoice that was perfectly correct.
+        """
+        cleaned = value.strip().upper().replace(" ", "")
+        problem = gstin_problem(cleaned)
+        if problem:
+            raise ValueError(f"'{cleaned}' is not a valid GSTIN ({problem})")
+        return cleaned
+
+    @field_validator("status")
+    @classmethod
+    def _check_status(cls, value: str) -> str:
+        cleaned = value.strip().lower()
+        if cleaned not in {"approved", "pending", "blocked"}:
+            raise ValueError("status must be approved, pending or blocked")
+        return cleaned
+
+    @field_validator("bank_account_last4")
+    @classmethod
+    def _check_last4(cls, value: str) -> str:
+        cleaned = "".join(c for c in (value or "") if c.isdigit())
+        if cleaned and len(cleaned) != 4:
+            raise ValueError("bank account must be the last 4 digits only")
+        return cleaned
+
+
+class NewPOLine(BaseModel):
+    description: str = Field(min_length=1, max_length=300)
+    sku: str = ""
+    qty: Decimal = Decimal("1")
+    unit_price: Decimal = Decimal("0.00")
+
+
+class NewPurchaseOrder(BaseModel):
+    """A PO may be raised with line detail or as a committed value only.
+
+    Blanket and service POs genuinely carry no line items, so lines are
+    optional; reconciliation says out loud when it only had a total to work
+    with (PO_HAS_NO_LINE_DETAIL).
+    """
+
+    vendor_id: str
+    total_amount: Decimal
+    po_number: str | None = None
+    issue_date: date | None = None
+    status: str = "open"
+    currency: str = "INR"
+    note: str = ""
+    lines: list[NewPOLine] = Field(default_factory=list)
+
+    @field_validator("total_amount")
+    @classmethod
+    def _positive(cls, value: Decimal) -> Decimal:
+        if value <= 0:
+            raise ValueError("the PO total must be greater than zero")
+        return Decimal(value).quantize(Decimal("0.01"))
+
+    @field_validator("status")
+    @classmethod
+    def _check_status(cls, value: str) -> str:
+        cleaned = value.strip().lower()
+        if cleaned not in {"open", "closed"}:
+            raise ValueError("status must be open or closed")
+        return cleaned
+
+
+def _next_id(existing: set[str], prefix: str, width: int, start: int) -> str:
+    """The next free identifier in the series the seed data already uses."""
+    numbers = []
+    for value in existing:
+        tail = value[len(prefix):]
+        if value.startswith(prefix) and tail.isdigit():
+            numbers.append(int(tail))
+    candidate = max(numbers, default=start - 1) + 1
+    while f"{prefix}{candidate:0{width}d}" in existing:
+        candidate += 1
+    return f"{prefix}{candidate:0{width}d}"
+
+
+@app.post("/api/reference/vendors", status_code=201)
+def add_vendor(payload: NewVendor,
+               session: Session = Depends(get_session)) -> dict:
+    """Onboard a vendor onto the master."""
+    existing = {row.vendor_id for row in session.exec(select(VendorRow)).all()}
+    vendor_id = (payload.vendor_id or "").strip().upper() or _next_id(
+        existing, "V", 3, 1)
+    if vendor_id in existing:
+        raise HTTPException(status_code=409,
+                            detail=f"Vendor {vendor_id} already exists.")
+
+    clash = session.exec(
+        select(VendorRow).where(VendorRow.gstin == payload.gstin)).first()
+    if clash is not None:
+        # Two rows sharing a GSTIN would make vendor matching depend on row
+        # order, which is the one thing it must never do.
+        raise HTTPException(
+            status_code=409,
+            detail=f"GSTIN {payload.gstin} is already held by "
+                   f"{clash.legal_name} ({clash.vendor_id}).")
+
+    row = VendorRow(
+        vendor_id=vendor_id,
+        legal_name=payload.legal_name,
+        aliases="|".join(a.strip() for a in payload.aliases if a.strip()),
+        gstin=payload.gstin,
+        status=payload.status,
+        payment_terms=payload.payment_terms or "Net 30",
+        bank_account_last4=payload.bank_account_last4,
+    )
+    session.add(row)
+    session.commit()
+    log.info("vendor added: %s %s", row.vendor_id, row.legal_name)
+    return {"vendor_id": row.vendor_id, "legal_name": row.legal_name,
+            "gstin": row.gstin, "status": row.status}
+
+
+@app.post("/api/reference/purchase-orders", status_code=201)
+def add_purchase_order(payload: NewPurchaseOrder,
+                       session: Session = Depends(get_session)) -> dict:
+    """Raise a purchase order against a vendor on the master."""
+    vendor = session.get(VendorRow, payload.vendor_id.strip().upper())
+    if vendor is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"No vendor {payload.vendor_id} on the master. "
+                   f"Add the vendor first.")
+
+    existing = {row.po_number
+                for row in session.exec(select(PurchaseOrderRow)).all()}
+    po_number = (payload.po_number or "").strip().upper() or _next_id(
+        existing, "PO-", 4, 4501)
+    if po_number in existing:
+        raise HTTPException(status_code=409,
+                            detail=f"{po_number} already exists.")
+
+    session.add(PurchaseOrderRow(
+        po_number=po_number, vendor_id=vendor.vendor_id,
+        issue_date=payload.issue_date or datetime.now(timezone.utc).date(),
+        status=payload.status, currency=payload.currency.strip().upper(),
+        total_amount=payload.total_amount,
+        amount_invoiced_to_date=Decimal("0.00"),
+        note=payload.note.strip(),
+    ))
+    for index, line in enumerate(payload.lines, start=1):
+        qty = Decimal(line.qty)
+        unit_price = Decimal(line.unit_price).quantize(Decimal("0.01"))
+        session.add(POLineRow(
+            po_number=po_number, line_no=index,
+            sku=line.sku.strip(), description=line.description.strip(),
+            qty=qty, unit_price=unit_price,
+            line_amount=(qty * unit_price).quantize(Decimal("0.01")),
+        ))
+    session.commit()
+    log.info("purchase order added: %s for %s", po_number, vendor.vendor_id)
+    return {"po_number": po_number, "vendor_id": vendor.vendor_id,
+            "total_amount": str(payload.total_amount),
+            "lines": len(payload.lines)}
 
 
 @app.get("/api/reference/purchase-orders")

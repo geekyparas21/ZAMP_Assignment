@@ -68,13 +68,39 @@ def test_vendor_is_found_by_name_when_no_gstin_is_present(rules, vendors):
     assert match.score >= 0.70
 
 
-def test_unknown_vendor_is_rejected_not_held(rules, vendors):
-    """Paying a supplier who is not on the master is the expensive mistake."""
+def test_unknown_vendor_is_held_for_onboarding_not_rejected(rules, vendors):
+    """An unknown supplier may simply be a new one.
+
+    Paying a vendor who is not on the master is still the expensive mistake,
+    and nothing here approves one - but refusing the invoice outright is the
+    wrong hold. In an AP team this routes to procurement for onboarding, so
+    the finding is REVIEW and the vendor stays unmatched. Only a *blocked*
+    vendor is a refusal (see test_blocked_vendor_is_flagged).
+    """
+    from backend.app.rules.codes import Severity, get
+
     match, findings = match_vendor(
         normalised(rules, vendor_name="Shadow Trading Enterprises", vendor_gstin=None),
         vendors, rules)
     assert match.vendor is None
-    assert "VENDOR_NOT_ON_MASTER" in codes(findings)
+    assert "VENDOR_UNKNOWN" in codes(findings)
+    assert get("VENDOR_UNKNOWN").severity == Severity.REVIEW
+
+
+def test_an_unknown_vendor_finding_carries_what_onboarding_needs(rules, vendors):
+    """The evidence is what the draft email is written from, not free text."""
+    _, findings = match_vendor(
+        normalised(rules, vendor_name="Shadow Trading Enterprises",
+                   vendor_gstin="27AAMCM1234N1Z5"),
+        vendors, rules)
+    evidence = next(f for f in findings if f.code == "VENDOR_UNKNOWN").evidence
+
+    assert evidence["invoice_vendor"] == "Shadow Trading Enterprises"
+    assert evidence["invoice_gstin"] == "27AAMCM1234N1Z5"
+    assert evidence["invoice_number"] == "BSI-2026-1042"
+    assert evidence["invoice_date"] == "2026-11-04"
+    assert evidence["invoice_total"] == "1,07,026.00"
+    assert evidence["best_score"] < evidence["floor"]
 
 
 def test_blocked_vendor_is_flagged(rules, vendors):

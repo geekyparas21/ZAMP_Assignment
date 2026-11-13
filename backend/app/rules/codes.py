@@ -123,11 +123,6 @@ VENDOR_BLOCKED = _register(
     "VENDOR_BLOCKED", Severity.REJECT, "Vendor is blocked",
     "{vendor_name} ({vendor_id}) is marked '{status}' on the vendor master.",
     "Do not pay. Route to procurement to confirm the block before any further action.")
-VENDOR_NOT_ON_MASTER = _register(
-    "VENDOR_NOT_ON_MASTER", Severity.REJECT, "Vendor not on the approved list",
-    "No approved vendor matches '{invoice_vendor}'. Closest was {best_name} "
-    "at {best_score:.0%}, below the {floor:.0%} threshold.",
-    "Do not pay. Send to vendor onboarding if this supplier is legitimate.")
 PO_CLOSED = _register(
     "PO_CLOSED", Severity.REJECT, "Purchase order is closed",
     "{po_number} is closed, with {invoiced} of {po_total} already invoiced.",
@@ -139,7 +134,25 @@ NOT_AN_INVOICE = _register(
 
 # ===========================================================================
 # NEEDS_REVIEW - a human must look. Ordered most consequential first.
+#
+# The two counterparty codes are declared first on purpose. Until we know who
+# is being paid, and that the invoice is even addressed to us, no amount-level
+# finding is the most useful thing to put in front of a reviewer.
 # ===========================================================================
+VENDOR_UNKNOWN = _register(
+    "VENDOR_UNKNOWN", Severity.REVIEW, "Vendor is not on the vendor master",
+    "No vendor on the master matches '{invoice_vendor}'"
+    "{gstin_clause}. The closest name was {best_name} at {best_score:.0%}, "
+    "below the {floor:.0%} needed to treat them as the same company.",
+    "Route to procurement for vendor onboarding. Do not pay until the supplier "
+    "is on the master and their bank details have been verified independently.")
+BILLED_TO_OTHER_ENTITY = _register(
+    "BILLED_TO_OTHER_ENTITY", Severity.REVIEW, "Not addressed to us",
+    "This invoice is billed to '{bill_to}', not to {our_name}"
+    "{gstin_clause}. It may be a personal or consumer receipt rather than a "
+    "company purchase.",
+    "Confirm who incurred this cost. If it is a personal expense, it belongs "
+    "in expense claims, not accounts payable.")
 PO_OVERBILLED = _register(
     "PO_OVERBILLED", Severity.REVIEW, "Exceeds the remaining PO balance",
     "{po_number} has {remaining} remaining of {po_total} ({invoiced} already invoiced), "
@@ -181,10 +194,16 @@ PO_INFERRED_LOW_CONFIDENCE = _register(
     "No PO was quoted. The best candidate {po_number} scored only {score:.0%}, "
     "below the {threshold:.0%} required to proceed automatically.",
     "Confirm the correct PO before paying.")
+NO_PO_FOUND = _register(
+    "NO_PO_FOUND", Severity.REVIEW, "No purchase order found",
+    "The invoice quotes no purchase order, and no open PO {search_scope} could "
+    "be matched to it.",
+    "Check whether this purchase was raised against a PO. If it was not, it "
+    "needs procurement approval before payment.")
 PO_NOT_FOUND = _register(
-    "PO_NOT_FOUND", Severity.REVIEW, "PO reference not found",
-    "The invoice quotes '{po_reference}' but no such PO exists, and no open PO for "
-    "this vendor matches the amount.",
+    "PO_NOT_FOUND", Severity.REVIEW, "Quoted PO does not exist",
+    "The invoice quotes '{po_reference}' but no such PO exists, and no open PO "
+    "for this vendor matches the amount.",
     "Check the PO number with the vendor or procurement.")
 PO_VENDOR_MISMATCH = _register(
     "PO_VENDOR_MISMATCH", Severity.REVIEW, "PO belongs to a different vendor",
@@ -266,6 +285,11 @@ TAX_INCLUSIVE_PRESENTATION = _register(
     "Rates are GST-inclusive. Taxable value {subtotal} and GST {tax} were "
     "back-computed at {rate}% for comparison with the PO.",
     "No action needed.")
+PO_HAS_NO_LINE_DETAIL = _register(
+    "PO_HAS_NO_LINE_DETAIL", Severity.INFO, "PO holds a value, not line items",
+    "{po_number} carries a committed value of {po_total} with no line detail, "
+    "so only the total was reconciled - line prices and quantities could not be.",
+    "No action needed. Add line detail to the PO if per-line checking is wanted.")
 SCANNED_DOCUMENT = _register(
     "SCANNED_DOCUMENT", Severity.INFO, "Scanned document",
     "No text layer was found ({chars} characters over {pages} page(s)), so the pages "

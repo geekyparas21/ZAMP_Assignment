@@ -160,6 +160,8 @@ def _validation_detail(invoice: NormalisedInvoice) -> dict[str, Any]:
     return {
         "vendor_name": invoice.vendor_name,
         "vendor_gstin": invoice.vendor_gstin,
+        "bill_to_name": invoice.bill_to_name,
+        "bill_to_gstin": invoice.bill_to_gstin,
         "invoice_number": invoice.invoice_number,
         "invoice_number_normalised": invoice.invoice_number_normalised,
         "invoice_date": invoice.invoice_date.isoformat() if invoice.invoice_date else None,

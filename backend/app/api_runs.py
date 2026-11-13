@@ -21,10 +21,11 @@ from sqlmodel import Session, func, select
 
 from .config import SAMPLES_DIR
 from .db import get_engine, get_session
-from .models import Run, RunStep, StoredFile
+from .models import LedgerRow, Run, RunStep, StoredFile
 from .money import format_inr
 from .pipeline.events import bus, sse_format
 from .pipeline.runner import STAGES, execute_run, new_run_id
+from .services.extractor import RecordedExtractor
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["runs"])
@@ -142,6 +143,65 @@ def start_sample_run(background: BackgroundTasks, key: str = Form(...),
     if not path.is_file() or SAMPLES_DIR.resolve() not in path.parents:
         raise HTTPException(status_code=404, detail="Sample not found.")
     return _start(background, session, path.read_bytes(), path.name, key)
+
+
+@router.post("/runs/{run_id}/rerun")
+def rerun(run_id: str, background: BackgroundTasks,
+          session: Session = Depends(get_session)) -> dict[str, Any]:
+    """Decide the same document again against the reference data as it is now.
+
+    This is the other half of being able to add a vendor or a PO on screen:
+    without it, "we have onboarded them" cannot be demonstrated against the
+    invoice that prompted it.
+
+    Two things make it honest rather than a reset button:
+
+      * the stored model response is replayed, so the only thing that can have
+        changed is the reference data, which is the whole point;
+      * the earlier run's ledger entry is withdrawn first. It recorded an
+        assessment that this run supersedes, and leaving it in place would make
+        the document its own duplicate.
+    """
+    source = session.get(Run, run_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    stored = session.get(StoredFile, run_id)
+    if stored is None or not stored.content:
+        raise HTTPException(
+            status_code=409,
+            detail="The original file for this run is no longer stored, so it "
+                   "cannot be re-run.")
+
+    # Withdraw the superseded assessment, so duplicate detection does not see
+    # this document as a prior submission of itself.
+    for row in session.exec(
+            select(LedgerRow).where(LedgerRow.run_id == run_id)).all():
+        session.delete(row)
+
+    new_id = new_run_id()
+    session.add(Run(id=new_id, filename=source.filename,
+                    sample_key=source.sample_key, status="running"))
+    session.commit()
+
+    background.add_task(_rerun_in_thread, new_id, bytes(stored.content),
+                        source.filename, source.sample_key,
+                        dict(source.extraction or {}))
+    return {"run_id": new_id, "status": "running", "rerun_of": run_id,
+            "stages": [{"stage": s, "title": t} for s, t in STAGES]}
+
+
+async def _rerun_in_thread(run_id: str, data: bytes, filename: str,
+                           sample_key: str | None,
+                           stored_extraction: dict[str, Any]) -> None:
+    recorded = RecordedExtractor(stored_extraction)
+    # A run that never got as far as extraction has nothing to replay, so it
+    # is re-read for real rather than silently failing.
+    extractor = recorded if recorded.usable else None
+    try:
+        await asyncio.to_thread(execute_run, run_id, data, filename, sample_key,
+                                extractor)
+    except Exception:  # pragma: no cover - execute_run handles its own errors
+        log.exception("re-run %s failed outside the pipeline", run_id)
 
 
 # ---------------------------------------------------------------------------
@@ -313,6 +373,9 @@ def delete_run(run_id: str, session: Session = Depends(get_session)) -> dict:
     stored = session.get(StoredFile, run_id)
     if stored:
         session.delete(stored)
+    for row in session.exec(
+            select(LedgerRow).where(LedgerRow.run_id == run_id)).all():
+        session.delete(row)
     session.delete(run)
     session.commit()
     return {"status": "deleted", "run_id": run_id}

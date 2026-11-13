@@ -250,5 +250,24 @@
     "expected_reasons": [
       "VENDOR_BANK_MISMATCH"
     ]
+  },
+  {
+    "file": "09_unknown_vendor_meridian.pdf",
+    "kind": "text",
+    "template": "B",
+    "vendor": "Meridian Industrial Supplies Pvt Ltd",
+    "number": "MIS-2026-0188",
+    "po": "(none)",
+    "total": "87,320.00",
+    "total_raw": "87320.00",
+    "chars": 737,
+    "pages": 1,
+    "size_kb": 2.9,
+    "scenario": "Supplier is not on the vendor master at all \u2014 route for onboarding, then re-run.",
+    "expected_outcome": "NEEDS_REVIEW",
+    "expected_reasons": [
+      "VENDOR_UNKNOWN",
+      "NO_PO_FOUND"
+    ]
   }
 ]

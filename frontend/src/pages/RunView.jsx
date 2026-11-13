@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, FileText, RefreshCw } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, FileText, RefreshCw, RotateCw } from 'lucide-react'
 
 import { api, subscribeToRun } from '../api'
 import DecisionCard from '../components/DecisionCard'
@@ -12,11 +12,26 @@ import {
 
 export default function RunView() {
   const { runId } = useParams()
+  const navigate = useNavigate()
   const [steps, setSteps] = useState([])
   const [run, setRun] = useState(null)
   const [error, setError] = useState(null)
   const [stale, setStale] = useState(false)
+  const [rerunning, setRerunning] = useState(false)
   const finishedRef = useRef(false)
+
+  async function rerun() {
+    setRerunning(true)
+    setError(null)
+    try {
+      const { run_id: next } = await api.rerun(runId)
+      navigate(`/runs/${next}`)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setRerunning(false)
+    }
+  }
 
   const mergeStep = useCallback((incoming) => {
     setSteps((previous) => {
@@ -106,9 +121,13 @@ export default function RunView() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <BackLink />
         {run && !isRunning && (
-          <div className="flex items-center gap-3 text-sm text-muted">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
             <span className="tnum">Completed in {formatDuration(run.duration_ms)}</span>
             <OutcomeChip outcome={run.outcome} />
+            <Button variant="secondary" size="sm" onClick={rerun} disabled={rerunning}>
+              <RotateCw className={`h-4 w-4 ${rerunning ? 'animate-spin' : ''}`} />
+              {rerunning ? 'Re-running…' : 'Re-run'}
+            </Button>
           </div>
         )}
       </div>
@@ -143,6 +162,10 @@ export default function RunView() {
           </div>
         )}
       </Card>
+
+      {error && run && (
+        <ErrorNote title="Could not re-run this invoice" message={error} />
+      )}
 
       {stale && isRunning && (
         <p className="rounded-lg bg-warn-soft px-4 py-2.5 text-sm text-warn">

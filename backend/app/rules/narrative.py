@@ -125,9 +125,15 @@ def build_draft_email(
     who = vendor.legal_name if vendor else (inv.vendor_name if inv else "Supplier")
     internal = primary.code in {
         "PO_INFERRED_AMBIGUOUS", "PO_INFERRED_LOW_CONFIDENCE", "PO_NOT_FOUND",
-        "VENDOR_BLOCKED", "VENDOR_PENDING", "VENDOR_NOT_ON_MASTER",
-        "VENDOR_BANK_MISMATCH", "QTY_VARIANCE_EXCEEDS_TOLERANCE",
+        "NO_PO_FOUND", "VENDOR_BLOCKED", "VENDOR_PENDING", "VENDOR_UNKNOWN",
+        "BILLED_TO_OTHER_ENTITY", "VENDOR_BANK_MISMATCH",
+        "QTY_VARIANCE_EXCEEDS_TOLERANCE",
     }
+
+    # An unknown vendor needs a specific thing from procurement - onboarding -
+    # so it gets a specific letter rather than the generic "please advise".
+    if primary.code == "VENDOR_UNKNOWN":
+        return _onboarding_email(primary, blocking, inv)
 
     if internal:
         to = "procurement@acmemanufacturing.example"
@@ -157,6 +163,59 @@ def build_draft_email(
     body_lines += ["", closing]
 
     return {"to": to, "subject": subject, "body": "\n".join(body_lines)}
+
+
+def _onboarding_email(primary, blocking: list, inv) -> dict[str, str]:
+    """The internal request that turns an unknown supplier into a known one.
+
+    Everything procurement needs to open an onboarding case is in the body,
+    taken from the extracted fields rather than retyped: they should not have
+    to open the PDF to act on this.
+    """
+    evidence = primary.evidence
+    name = evidence.get("invoice_vendor") or "(vendor name not read)"
+    number = (inv.invoice_number if inv and inv.invoice_number else "(no number)")
+    date = (inv.invoice_date.isoformat() if inv and inv.invoice_date else "(no date)")
+    amount = (f"{inv.currency} {format_inr(inv.total)}"
+              if inv and inv.total is not None else "(no total read)")
+
+    others = [f for f in blocking if f.code != "VENDOR_UNKNOWN"]
+    body = [
+        "Hi team,",
+        "",
+        "We have received an invoice from a supplier who is not on our vendor "
+        "master, so we cannot process it. Could you confirm whether this is a "
+        "supplier we should onboard?",
+        "",
+        "  Vendor name    : " + name,
+        "  Vendor GSTIN   : " + (evidence.get("invoice_gstin") or "(not shown on the invoice)"),
+        "  Invoice number : " + number,
+        "  Invoice date   : " + date,
+        "  Amount         : " + amount,
+        "",
+        "The closest name on the master is "
+        f"{evidence.get('best_name', '-')} at "
+        f"{float(evidence.get('best_score') or 0):.0%}, which is too low to treat "
+        "as the same company.",
+    ]
+    if others:
+        body += ["", "Also worth knowing before this is approved:", ""]
+        body += [f"  - {f.message}" for f in others[:3]]
+    body += [
+        "",
+        "If they should be onboarded, please add them to the vendor master with "
+        "verified bank details and raise a PO, and we will re-run the invoice. "
+        "We have put it on hold in the meantime.",
+        "",
+        "Thanks,",
+        "Accounts Payable",
+        "Acme Manufacturing Pvt Ltd",
+    ]
+    return {
+        "to": "procurement@acmemanufacturing.example",
+        "subject": f"Vendor onboarding needed: {name} — invoice {number}",
+        "body": "\n".join(body),
+    }
 
 
 def _domain(name: str) -> str:

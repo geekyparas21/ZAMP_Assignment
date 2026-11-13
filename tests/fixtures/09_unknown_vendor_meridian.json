@@ -1,0 +1,53 @@
+{
+  "model": "gemini-3.5-flash",
+  "attempts": 1,
+  "input_kind": "text",
+  "tokens": {
+    "prompt": 860,
+    "response": 520,
+    "total": 1901
+  },
+  "warnings": [],
+  "response": {
+    "is_invoice": true,
+    "document_type": "invoice",
+    "vendor_name": "Meridian Industrial Supplies Pvt Ltd",
+    "vendor_gstin": "27AAMCM1234N1Z5",
+    "vendor_address": "Unit 7, Ranjangaon MIDC | Pune 412220, Maharashtra",
+    "bill_to_name": "Acme Manufacturing Pvt Ltd",
+    "bill_to_gstin": "27AAACA1111A1ZS",
+    "invoice_number": "MIS-2026-0188",
+    "invoice_date": "2026-11-12",
+    "due_date": "2026-12-12",
+    "po_reference": null,
+    "currency": "INR",
+    "line_items": [
+      {
+        "description": "Industrial floor degreaser 20L",
+        "hsn": "3402",
+        "qty": "40",
+        "unit": "CAN",
+        "unit_price": "1850.00",
+        "amount": "74000.00"
+      }
+    ],
+    "subtotal": "74000.00",
+    "tax_total": "13320.00",
+    "tax_rate_pct": "18",
+    "total": "87320.00",
+    "tax_inclusive": false,
+    "bank_account_last4": "6690",
+    "notes": "First supply against our new vendor registration.",
+    "field_confidence": {
+      "vendor_name": 0.99,
+      "vendor_gstin": 0.99,
+      "invoice_number": 0.99,
+      "invoice_date": 0.99,
+      "due_date": 0.99,
+      "po_reference": 1.0,
+      "subtotal": 0.99,
+      "tax_total": 0.99,
+      "total": 0.99
+    }
+  }
+}

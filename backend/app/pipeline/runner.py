@@ -158,7 +158,7 @@ def _summarise(stage: str, findings: list[Finding], detail: dict[str, Any]) -> s
             method = ("GSTIN" if detail.get("method") == "gstin"
                       else f"name match at {detail.get('score', 0):.0%}")
             return f"Matched {detail.get('legal_name')} by {method}."
-        return "No vendor matched."
+        return "No vendor on the master matched this supplier."
     if stage == "duplicates":
         return (f"No duplicate found across "
                 f"{detail.get('ledger_entries_searched', 0)} processed invoices.")
@@ -335,10 +335,15 @@ def _execute(session: Session, recorder: RunRecorder, run: Run, data: bytes,
                         {"error_code": exc.code, **exc.evidence})
         return _fail(session, recorder, run, "validation", exc.code, exc.evidence)
 
-    session.add(LLMCall(
-        run_id=run.id, model=result.model, attempts=result.attempts,
-        prompt_tokens=result.prompt_tokens, response_tokens=result.response_tokens,
-        total_tokens=result.total_tokens, duration_ms=result.duration_ms, ok=True))
+    # A replayed extraction made no call, so it must not appear in the quota
+    # counter that is checked before a demo.
+    if not result.replayed:
+        session.add(LLMCall(
+            run_id=run.id, model=result.model, attempts=result.attempts,
+            prompt_tokens=result.prompt_tokens,
+            response_tokens=result.response_tokens,
+            total_tokens=result.total_tokens,
+            duration_ms=result.duration_ms, ok=True))
     run.llm_model = result.model
     run.llm_tokens = result.total_tokens
     run.llm_calls = result.attempts
@@ -348,7 +353,11 @@ def _execute(session: Session, recorder: RunRecorder, run: Run, data: bytes,
 
     recorder.finish(
         "extraction", "warning" if result.warnings else "passed",
-        (f"Read {len(result.invoice.lines)} line item(s) from the "
+        (f"Replayed the extraction recorded by the earlier run "
+         f"({len(result.invoice.lines)} line item(s), model {result.model}) - "
+         f"no new AI call was made."
+         if result.replayed else
+         f"Read {len(result.invoice.lines)} line item(s) from the "
          f"{'page images' if document.is_scanned else 'text layer'} using "
          f"{result.model} in {result.duration_ms / 1000:.1f}s."),
         result.redacted_log())

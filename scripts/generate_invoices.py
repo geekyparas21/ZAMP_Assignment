@@ -42,7 +42,9 @@ OUT_DIR = ROOT / "sample_invoices"
 BUYER = {
     "name": "Acme Manufacturing Pvt Ltd",
     "address": "Plot 42, MIDC Industrial Area, Chakan\nPune 410501, Maharashtra",
-    "gstin": "27AAACA1111A1Z8",
+    # Checksum-valid, and the same value config/rules.yaml holds under
+    # company.gstin, so the bill-to check compares like with like.
+    "gstin": "27AAACA1111A1ZS",
 }
 
 TWO = Decimal("0.01")
@@ -754,6 +756,24 @@ def samples() -> list[Invoice]:
             bank_last4_override="9931",
             extra_note="NOTE: Please update our bank account for all future payments.",
         ),
+
+        # --- 9. Unknown vendor, correctly billed to us ---------------------
+        # The onboarding case: a legitimate-looking invoice from a supplier we
+        # have simply never paid before. It must be held for onboarding, not
+        # refused - and must approve once the vendor and a PO exist.
+        Invoice(
+            filename="09_unknown_vendor_meridian.pdf",
+            scenario="Supplier is not on the vendor master at all — route for onboarding, then re-run.",
+            template="B",
+            vendor_name="Meridian Industrial Supplies Pvt Ltd",
+            vendor_address="Unit 7, Ranjangaon MIDC\nPune 412220, Maharashtra",
+            vendor_gstin="27AAMCM1234N1Z5", vendor_bank_last4="6690",
+            invoice_number="MIS-2026-0188", invoice_date="2026-11-12",
+            due_date="2026-12-12", po_reference=None,
+            lines=[Line("Industrial floor degreaser 20L", "3402", D("40"),
+                        "CAN", D("1850.00"))],
+            extra_note="First supply against our new vendor registration.",
+        ),
     ]
 
 
@@ -776,6 +796,8 @@ EXPECTED: dict[str, tuple[str, tuple[str, ...]]] = {
     "06_quotation_not_invoice.pdf": ("REJECTED", ("NOT_AN_INVOICE",)),
     "07_missing_invoice_number_bharat.pdf": ("NEEDS_REVIEW", ("MISSING_INVOICE_NUMBER",)),
     "08_bank_mismatch_bharat.pdf": ("NEEDS_REVIEW", ("VENDOR_BANK_MISMATCH",)),
+    "09_unknown_vendor_meridian.pdf": ("NEEDS_REVIEW",
+                                       ("VENDOR_UNKNOWN", "NO_PO_FOUND")),
 }
 
 

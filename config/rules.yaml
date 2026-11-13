@@ -43,11 +43,28 @@ duplicates:
   suspected_window_days: 7
   suspected_amount_tolerance_abs: 1.00
 
+# --- Who we are ------------------------------------------------------------
+# Used by the bill-to check: an invoice addressed to someone else is not ours
+# to pay, however legitimate it is. Consumer receipts are the common case.
+company:
+  legal_name: "Acme Manufacturing Pvt Ltd"
+  gstin: "27AAACA1111A1ZS"
+  aliases:
+    - "Acme Manufacturing"
+    - "Acme Manufacturing Private Limited"
+    - "Acme Mfg Pvt Ltd"
+  # Below this name similarity, and with no GSTIN match, the invoice is taken
+  # to be addressed to a different entity.
+  bill_to_match_floor: 0.70
+
 # --- Vendor matching -------------------------------------------------------
 vendor:
   # GSTIN is tried first and is decisive. Name matching is the fallback.
   name_match_auto_accept: 0.88
   name_match_review_floor: 0.70   # below this: no match at all
+  # An unknown vendor is routed for onboarding, not refused. Only a blocked
+  # vendor is a policy violation. See ASSUMPTIONS.md #13.
+  unknown_vendor_is_reviewable: true
   # Bank details on an invoice differing from the vendor master is the
   # classic payment-redirection fraud signal. Always a human decision.
   bank_mismatch_requires_review: true

@@ -145,6 +145,8 @@ def validate_and_normalise(
 
     inv.vendor_name = (extracted.vendor_name or "").strip() or None
     inv.vendor_gstin = (extracted.vendor_gstin or "").strip().upper().replace(" ", "") or None
+    inv.bill_to_name = (extracted.bill_to_name or "").strip() or None
+    inv.bill_to_gstin = (extracted.bill_to_gstin or "").strip().upper().replace(" ", "") or None
     inv.invoice_number = (extracted.invoice_number or "").strip() or None
     inv.invoice_number_normalised = normalise_invoice_number(inv.invoice_number)
     inv.invoice_date = parse_date(extracted.invoice_date)

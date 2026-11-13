@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { AlertTriangle, RotateCcw } from 'lucide-react'
 
 import { api } from '../api'
+import { AddPOForm, AddVendorForm } from '../components/ReferenceForms'
 import {
   Button, Card, CardHeader, ErrorNote, SeverityBadge, Spinner,
 } from '../components/ui'
@@ -21,6 +22,9 @@ export default function Reference() {
   const [error, setError] = useState(null)
   const [resetting, setResetting] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  // Only one editor open at a time: they are tall, and the tables underneath
+  // are what the page is for.
+  const [editor, setEditor] = useState(null)
 
   const load = useCallback(async () => {
     try {
@@ -112,8 +116,13 @@ export default function Reference() {
       {tab === 'vendors' && data.vendors && (
         <Card className="overflow-hidden">
           <CardHeader
-            title="Approved vendor master"
+            title="Vendor master"
             subtitle="Aliases are the name variants an invoice might actually print."
+          />
+          <AddVendorForm
+            open={editor === 'vendor'}
+            onToggle={() => setEditor(editor === 'vendor' ? null : 'vendor')}
+            onAdded={load}
           />
           <Table
             head={['ID', 'Legal name', 'Also known as', 'GSTIN', 'Status', 'Terms', 'Bank']}
@@ -131,6 +140,12 @@ export default function Reference() {
           <CardHeader
             title="Purchase orders"
             subtitle="Remaining balance is what an invoice is actually reconciled against."
+          />
+          <AddPOForm
+            open={editor === 'po'}
+            onToggle={() => setEditor(editor === 'po' ? null : 'po')}
+            vendors={data.vendors ?? []}
+            onAdded={load}
           />
           <Table
             head={['PO', 'Vendor', 'Issued', 'Status', 'Total', 'Invoiced', 'Remaining']}

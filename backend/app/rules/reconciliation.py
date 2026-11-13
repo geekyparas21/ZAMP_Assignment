@@ -90,6 +90,27 @@ def reconcile(
                 }))
 
     # --- lines --------------------------------------------------------------
+    # A PO with no line detail is a committed value, not a list of items -
+    # blanket and service POs are routinely raised that way. There is nothing
+    # to compare each invoice line against, so comparing anyway would mark
+    # every line "not on the PO" and hold a perfectly ordinary invoice for a
+    # reason that is about our reference data, not about the invoice.
+    if not po.lines:
+        findings.append(Finding("PO_HAS_NO_LINE_DETAIL", STAGE, {
+            "po_number": po.po_number, "po_total": format_inr(po.total_amount),
+            "line_count": len(inv.lines),
+        }))
+        for line in inv.lines:
+            recon.comparisons.append(LineComparison(
+                description=line.description or "(no description)",
+                po_description=None, invoice_qty=line.qty, po_qty=None,
+                invoice_unit_price=line.unit_price, po_unit_price=None,
+                price_variance_pct=None, qty_variance_pct=None,
+                invoice_amount=line.amount, matched=False,
+                status="no_po_line_detail",
+            ))
+        return recon, findings
+
     price_pct = rules.decimal("tolerance.line_unit_price_variance_pct")
     qty_pct = rules.decimal("tolerance.line_quantity_variance_pct")
     price_breaches: list[str] = []

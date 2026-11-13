@@ -88,23 +88,38 @@ export default function DecisionCard({ run }) {
 
         {/* why */}
         <div>
-          <p className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">
-            Why this decision
-          </p>
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
+            <p className="text-xs font-medium tracking-wide text-muted uppercase">
+              Why this decision
+            </p>
+            <p className="text-[11px] text-muted">
+              Every check that fired, most consequential first
+              {findings.length > 1 && ` · ${findings.length} findings`}
+            </p>
+          </div>
           <ul className="space-y-2">
             {[...blocking, ...notes].map((finding, index) => (
               <li
                 key={index}
                 className={`rounded-lg p-3 ring-1 ${
-                  finding.severity === 'INFO'
-                    ? 'bg-surface-2 ring-border'
-                    : 'bg-surface ring-faint'
+                  index === 0 && blocking.length > 0
+                    ? 'bg-surface ring-2 ring-faint'
+                    : finding.severity === 'INFO'
+                      ? 'bg-surface-2 ring-border'
+                      : 'bg-surface ring-faint'
                 }`}
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <SeverityBadge severity={finding.severity} />
                   <span className="font-medium text-text">{finding.title}</span>
                   <span className="font-mono text-[11px] text-muted">{finding.code}</span>
+                  {index === 0 && blocking.length > 0 && (
+                    // Which of several findings drove the outcome is not
+                    // obvious from a list, and it is the one to act on first.
+                    <span className="rounded bg-accent-soft px-1.5 py-px text-[10px] font-medium tracking-wider text-accent uppercase">
+                      Primary
+                    </span>
+                  )}
                 </div>
                 <p className="mt-1.5 text-sm text-text-2">{finding.message}</p>
                 {finding.severity !== 'INFO' && finding.next_action && (

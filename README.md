@@ -38,11 +38,11 @@ and control over financial risk.
 
 | Page | What it does |
 |---|---|
-| **New run** | Drag-and-drop an invoice PDF, or run any of 14 sample invoices with one click. Each sample says which scenario it exercises. |
+| **New run** | Drag-and-drop an invoice PDF, or run any of 15 sample invoices with one click. Each sample says which scenario it exercises. |
 | **Live run view** | The ten stages animate `pending → running → result` from real backend events over Server-Sent Events. Expand any stage for its evidence: extracted fields, rules evaluated, PO candidates with scores, the reconciliation table. Alongside it, the original PDF and every field read from it with a confidence score. |
 | **Decision card** | Outcome, a plain-English explanation containing the actual figures, the recommended next action, every reason code with evidence, a ready-to-send draft email, and a downloadable audit JSON. |
-| **Dashboard** | KPI tiles, full run history, filter by outcome, search by vendor / invoice number / PO. Click any row to replay that run exactly as it happened. |
-| **Reference data** | Vendors, purchase orders with live remaining balances, the processed-invoice ledger, the policy file, all reason codes, AI usage in the last 24h, and a "Reset demo data" button. |
+| **Dashboard** | KPI tiles, full run history, filter by outcome, search by vendor / invoice number / PO. Click any row to replay that run exactly as it happened, or **Re-run** it against the reference data as it now stands. |
+| **Reference data** | Vendors, purchase orders with live remaining balances, the processed-invoice ledger, the policy file, all reason codes, AI usage in the last 24h, and a "Reset demo data" button. **Add vendor** and **Add PO** forms onboard a supplier on screen — with the same GSTIN checksum the pipeline applies to invoices — so a held invoice can be re-run and approved. |
 
 Nothing in the UI is simulated: no fake timers, no hardcoded outcomes. Every stage
 you see is a real backend event, and the dashboard replays past runs from stored
@@ -54,7 +54,7 @@ step records.
 |---|---|
 | [docs/PROCESS_MAP.md](docs/PROCESS_MAP.md) | Full process flowchart, decision outcomes, tolerance policy, and the complete reason-code reference |
 | [ASSUMPTIONS.md](ASSUMPTIONS.md) | Every assumption made where the brief was silent, with rationale |
-| docs/DEMO_SCRIPT.md | *(added in the final phase)* 5-minute video script and live-interview run order |
+| [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | 5-minute video script, live-interview run order, and the unknown-vendor → onboard → re-run edge case |
 
 ## Running it locally
 
@@ -168,7 +168,7 @@ Render instance removes the sleep entirely if you prefer not to manage it.
 Under active construction, built in phases. This README is expanded as each phase lands; setup,
 deployment and limitations sections arrive with the phases that make them true.
 
-Working end-to-end and deployed. All 14 sample invoices produce their expected
-outcome on the live service, after a reset, in order. 248 tests pass offline.
+Working end-to-end and deployed. All 15 sample invoices produce their expected
+outcome, in order, after a reset. 295 tests pass offline.
 
-Remaining: the demo script, and a final documentation pass.
+Remaining: a final documentation pass.

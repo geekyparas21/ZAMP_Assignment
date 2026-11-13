@@ -107,6 +107,15 @@ class InvoiceExtractionSchema(BaseModel):
         None, description="The supplier's 15-character GSTIN. Not the buyer's.")
     vendor_address: str | None = None
 
+    bill_to_name: str | None = Field(
+        None, description="The BUYER's name - the 'Billed To' / 'Invoice To' / "
+                          "'To,' party the invoice is addressed to. On a "
+                          "consumer receipt this is an individual's name. Null "
+                          "if the document names no buyer.")
+    bill_to_gstin: str | None = Field(
+        None, description="The buyer's 15-character GSTIN, if the document "
+                          "shows one. Not the supplier's.")
+
     invoice_number: str | None = Field(
         None, description="The invoice/bill/reference number exactly as printed, "
                           "keeping its punctuation. Null if the document has none.")
@@ -145,7 +154,7 @@ class InvoiceExtractionSchema(BaseModel):
         description="Your confidence per field, 0.0-1.0. Be honest: use a low "
                     "value when the text was unclear or you had to guess.")
 
-    @field_validator("vendor_gstin")
+    @field_validator("vendor_gstin", "bill_to_gstin")
     @classmethod
     def _tidy_gstin(cls, value: str | None) -> str | None:
         return value.strip().upper().replace(" ", "") if value else None
@@ -170,6 +179,8 @@ class InvoiceExtractionSchema(BaseModel):
             document_type=(self.document_type or "invoice"),
             vendor_name=(self.vendor_name or None),
             vendor_gstin=self.vendor_gstin,
+            bill_to_name=(self.bill_to_name or None),
+            bill_to_gstin=self.bill_to_gstin,
             invoice_number=(self.invoice_number or None),
             invoice_date=(self.invoice_date or None),
             due_date=(self.due_date or None),
@@ -202,8 +213,13 @@ Rules you must follow:
    plausible value.
 2. The vendor is the SUPPLIER being paid - the company whose name is at the
    top and who signs it. It is NOT the "Billed To" / "Invoice To" / "To,"
-   party, which is the buyer (Acme Manufacturing Pvt Ltd). Do not confuse them.
-   The same applies to GSTIN: return the supplier's, not the buyer's.
+   party, which is the buyer. Do not confuse them. The same applies to GSTIN:
+   vendor_gstin is the supplier's.
+2a. Separately, return the BUYER exactly as printed in bill_to_name and
+   bill_to_gstin - whoever the document is addressed to, even when that is a
+   private individual rather than a company. Do not substitute a name you
+   expect to see, and do not copy the supplier's details into these fields.
+   Return null if the document names no buyer at all.
 3. Return the invoice number exactly as printed, keeping punctuation - do not
    tidy "INV/2026/42" into "INV-2026-0042".
 4. Return a PO reference only if one is actually printed. If the document does
