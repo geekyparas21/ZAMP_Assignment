@@ -31,6 +31,7 @@ from ..money import format_inr
 from ..rules.codes import Finding, Severity
 from ..rules.evaluate import ReferenceData, evaluate
 from ..rules.validation import normalise_invoice_number
+from ..serialise import json_safe
 from ..services.document import IngestError, analyse
 from ..services.extractor import Extractor, ExtractionError, build_extractor
 from .events import bus
@@ -104,7 +105,7 @@ class RunRecorder:
         bus.publish(self.run_id, {
             "type": "stage.finished", "run_id": self.run_id, "stage": stage,
             "title": STAGE_TITLES[stage], "status": status, "summary": summary,
-            "duration_ms": duration, "detail": detail or {},
+            "duration_ms": duration, "detail": json_safe(detail or {}),
         })
 
     def skip(self, stage: str, reason: str) -> None:
@@ -125,7 +126,7 @@ class RunRecorder:
                            stage=stage, title=STAGE_TITLES[stage])
             self.session.add(step)
         for key, value in fields.items():
-            setattr(step, key, value)
+            setattr(step, key, json_safe(value) if key == "detail" else value)
         self.session.add(step)
         self.session.commit()
 
@@ -255,6 +256,11 @@ def execute_run(run_id: str, data: bytes, filename: str,
                                extractor)
         except Exception as exc:  # pragma: no cover - last line of defence
             log.exception("run %s crashed", run_id)
+            # The flush that failed leaves the session unusable; without this
+            # rollback the failure handler fails too and the run is stranded
+            # at "running" forever.
+            session.rollback()
+            run = session.get(Run, run_id)
             outcome = _fail(session, recorder, run, "output",
                             "LLM_UNAVAILABLE",
                             {"attempts": 0, "detail": f"internal error: {exc}"},
@@ -336,7 +342,7 @@ def _execute(session: Session, recorder: RunRecorder, run: Run, data: bytes,
     run.llm_model = result.model
     run.llm_tokens = result.total_tokens
     run.llm_calls = result.attempts
-    run.extraction = result.redacted_log()
+    run.extraction = json_safe(result.redacted_log())
     session.add(run)
     session.commit()
 
@@ -373,11 +379,11 @@ def _execute(session: Session, recorder: RunRecorder, run: Run, data: bytes,
     run.top_reason = decision.top_reason
     run.explanation = decision.explanation
     run.next_action = decision.next_action
-    run.draft_email = decision.draft_email
-    run.findings = [f.to_dict() for f in decision.findings]
-    run.reconciliation = _recon_payload(evaluation)
-    run.po_candidates = _candidates_payload(evaluation)
-    run.ledger_effect = effect
+    run.draft_email = json_safe(decision.draft_email)
+    run.findings = json_safe([f.to_dict() for f in decision.findings])
+    run.reconciliation = json_safe(_recon_payload(evaluation))
+    run.po_candidates = json_safe(_candidates_payload(evaluation))
+    run.ledger_effect = json_safe(effect)
     if evaluation.vendor:
         run.vendor_id = evaluation.vendor.vendor_id
         run.vendor_name = evaluation.vendor.legal_name
@@ -386,7 +392,7 @@ def _execute(session: Session, recorder: RunRecorder, run: Run, data: bytes,
         run.invoice_date = invoice.invoice_date
         run.total_amount = invoice.total
         run.currency = invoice.currency
-        run.confidence = invoice.confidence
+        run.confidence = json_safe(invoice.confidence)
     if evaluation.matched_po:
         run.po_number = evaluation.matched_po.po_number
     session.add(run)
@@ -483,7 +489,7 @@ def _fail(session: Session, recorder: RunRecorder, run: Run, from_stage: str,
     run.explanation = finding.message
     run.next_action = finding.next_action
     run.error_message = detail or finding.message
-    run.findings = [finding.to_dict()]
+    run.findings = json_safe([finding.to_dict()])
     session.add(run)
     session.commit()
 

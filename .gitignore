@@ -36,3 +36,6 @@ Thumbs.db
 # local run artefacts
 server.log
 frozen.tmp
+sweep.py
+.lastrun
+diag_*.py

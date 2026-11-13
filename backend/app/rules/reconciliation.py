@@ -69,14 +69,14 @@ def reconcile(
             else:
                 findings.append(Finding("TOTAL_VARIANCE_EXCEEDS_TOLERANCE", STAGE, {
                     "expected": format_inr(remaining), "actual": format_inr(inv.total),
-                    "difference": format_inr(difference), "pct": recon.variance_pct,
+                    "difference": format_inr(difference), "pct": recon.variance_pct,  # sanitised on write; kept exact here
                     "band": band_label, "po_number": po.po_number,
                 }))
         elif difference > 0:
             recon.within_tolerance = True
             findings.append(Finding("TOTAL_VARIANCE_WITHIN_TOLERANCE", STAGE, {
                 "expected": format_inr(remaining), "actual": format_inr(inv.total),
-                "difference": format_inr(difference), "pct": recon.variance_pct,
+                "difference": format_inr(difference), "pct": recon.variance_pct,  # sanitised on write; kept exact here
                 "band": band_label, "po_number": po.po_number,
             }))
         else:
