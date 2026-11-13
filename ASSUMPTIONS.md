@@ -62,3 +62,17 @@ Decided in Phase 1 unless noted; later phases append rather than rewrite.
 | 33 | The scanned sample is degraded with grey paper, ±1.4° skew, blur, edge shadows, dust speckle and quality-58 JPEG. | A barely-degraded scan is not evidence that the vision path works. The result is verified in code to have **zero** extractable characters. |
 | 34 | `sample_invoices/manifest.json` carries each sample's expected outcome and reason codes. | Drives the UI gallery labels and the end-to-end test assertions from one place — but is never read by the pipeline, which must not know what answer is expected. |
 | 35 | Four extra samples beyond the five scenarios (blocked vendor, quotation, missing invoice number, bank mismatch) are generated. | These are the "must not crash" cases; having them as real files means they can be tested, not just claimed. |
+
+## Extraction (Phase 4)
+
+| # | Assumption | Rationale |
+|---|---|---|
+| 36 | Model is **`gemini-3.5-flash`**, fallback **`gemini-3.5-flash-lite`**, both from env. | Verified against the live model list. Newer previews (3.6–3.8) exist but a demo wants stability over novelty; changing model is a one-line env change. |
+| 37 | Every numeric field is requested as a **string** and coerced in our own code. | Models are inconsistent about emitting `107026`, `"107026.00"` or `"₹1,07,026.00"`, sometimes within one response. Coercing centrally means one well-tested path instead of scattered surprises. |
+| 38 | A value that cannot be parsed as a number becomes **`None`, never `0`**. | A silent zero in an invoice total is a payment bug; a null is a flagged, visible gap. |
+| 39 | The prompt explicitly forbids inferring a PO, guessing absent fields, and forming any view on whether the invoice should be paid. | PO inference is the engine's job and must be scored and shown; a model that volunteers an opinion on payment invites someone to trust it. |
+| 40 | The prompt explicitly distinguishes **supplier from buyer**, naming Acme as the buyer. | Reading the "Billed To" party as the vendor is the easiest and costliest extraction error on an invoice. Asserted for all 14 samples. |
+| 41 | Field confidence is requested from the model but **treated as a ceiling, not a verdict** — validation-derived checks can only lower it. | Confirmed empirically: on the scanned sample the model returned a flat 0.98 for every field *including a `po_reference` it correctly returned as null*. Self-reported confidence alone is close to useless. |
+| 42 | Page images are rendered at **160 dpi, and only for scanned documents**. | Rendering every page of every text PDF would consume most of the run's time budget for nothing. |
+| 43 | On HTTP 429 the client switches to the fallback model immediately rather than exhausting retries on the primary. | Per-model quotas are separate; burning the backoff budget on an exhausted model wastes the demo's time. |
+| 44 | Fixtures are **real recorded Gemini responses**, and the test suite runs offline against them, with `pytest -m live` as the opt-in real-API run. | Keeps CI deterministic and preserves free-tier quota for demos, while still proving the rules work on genuine model output rather than hand-written convenience data. |
