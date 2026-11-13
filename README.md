@@ -138,6 +138,21 @@ To restore a known state before a demo:
 curl -X POST https://<your-service>.onrender.com/api/admin/reset
 ```
 
+### Before a demo — two things, in this order
+
+**1. Reset the demo data.** Reference Data → *Reset demo data*, or:
+
+```bash
+curl -X POST https://<your-service>.onrender.com/api/admin/reset
+```
+
+This matters more than it looks. Duplicate detection includes a file-hash check,
+so running the *same* sample PDF twice without a reset will correctly reject the
+second attempt as `DUPLICATE_CONFIRMED_HASH`. That is the system working — but it
+is not what you want the happy path to do on camera.
+
+**2. Warm the service.** See below.
+
 ### Cold starts — important before a demo
 
 A Render free web service **sleeps after 15 minutes without traffic**, and the
