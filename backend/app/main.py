@@ -27,6 +27,7 @@ from .db import get_engine, get_session, init_db, ping, seed_reference_data  # n
 from .models import (LedgerRow, LLMCall, POLineRow, PurchaseOrderRow,  # noqa: E402
                      VendorRow)
 from .money import format_inr  # noqa: E402
+from .pipeline.events import bus  # noqa: E402
 from .rules.codes import all_codes  # noqa: E402
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
@@ -40,9 +41,18 @@ app = FastAPI(
     version="0.5.0",
 )
 
+from .api_runs import router as runs_router  # noqa: E402
+
+app.include_router(runs_router)
+
 
 @app.on_event("startup")
-def on_startup() -> None:
+async def on_startup() -> None:
+    import asyncio
+
+    # Worker threads post live run events into this loop.
+    bus.bind_loop(asyncio.get_running_loop())
+
     settings = get_settings()
     log.info("starting up (env=%s, db=%s)", settings.app_env,
              settings.database_url.split("@")[-1][:60])

@@ -652,11 +652,15 @@ def samples() -> list[Invoice]:
         ),
         Invoice(
             filename="02b_split_po_nova_2of3.pdf",
-            scenario="Split PO 2/3 — second part-bill. Remaining balance drops to ~1,00,300.",
+            scenario="Split PO 2/3 — second part-bill. Remaining balance drops to ~1,20,360.",
             template="B", **nova,
             invoice_number="NPL-2026-0736", invoice_date="2026-11-08",
             due_date="2026-12-23", po_reference="PO-4510",
-            lines=[Line("Polypropylene granules PP-H110", "3902", D("2000"), "KG", D("85.00"))],
+            # Deliberately a different quantity from invoice 1. Two part-bills
+            # of the IDENTICAL amount within the 7-day window would (correctly)
+            # trip the suspected-duplicate rule, which would mask the
+            # over-billing this scenario exists to demonstrate.
+            lines=[Line("Polypropylene granules PP-H110", "3902", D("1800"), "KG", D("85.00"))],
         ),
         Invoice(
             filename="02c_split_po_nova_3of3_overbilled.pdf",
@@ -792,7 +796,7 @@ def cross_check_against_pos() -> list[str]:
         ("00_happy_path_bharat_steel.pdf", "PO-4501",
          lambda t, po: t == po, "invoice total equals PO total"),
         ("02c_split_po_nova_3of3_overbilled.pdf", "PO-4510",
-         lambda t, po: t > (po - Decimal("401200.00")) + Decimal("500"),
+         lambda t, po: t > (po - Decimal("381140.00")) + Decimal("500"),
          "exceeds remaining balance beyond tolerance"),
         ("04a_within_tolerance_trident.pdf", "PO-4530",
          lambda t, po: Decimal("0") < t - po <= Decimal("500"),

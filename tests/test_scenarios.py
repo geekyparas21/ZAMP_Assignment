@@ -140,11 +140,11 @@ def test_scenario_2_three_invoices_run_in_sequence(reference):
     assert "PARTIAL_INVOICE_AGAINST_PO" in first.codes
     po.amount_invoiced_to_date = apply_approval(first)["_raw_after"]
 
-    second = evaluate(nova(D("2000"), "NPL-2026-0736", "2026-11-08"),
+    second = evaluate(nova(D("1800"), "NPL-2026-0736", "2026-11-08"),
                       reference, "hash-2b")
     assert second.outcome == "APPROVED"
     po.amount_invoiced_to_date = apply_approval(second)["_raw_after"]
-    assert po.remaining_balance == D("100300.00")
+    assert po.remaining_balance == D("120360.00")
 
     third = evaluate(nova(D("1500"), "NPL-2026-0759", "2026-11-12"),
                      reference, "hash-2c")
@@ -153,8 +153,8 @@ def test_scenario_2_three_invoices_run_in_sequence(reference):
     assert apply_approval(third) is None, "a held invoice must not move the balance"
 
     evidence = next(f for f in third.findings if f.code == "PO_OVERBILLED").evidence
-    assert evidence["remaining"] == "1,00,300.00"
-    assert evidence["overage"] == "50,150.00"
+    assert evidence["remaining"] == "1,20,360.00"
+    assert evidence["overage"] == "30,090.00"
 
 
 def test_scenario_2_third_invoice_would_pass_on_a_fresh_po(reference):
@@ -302,3 +302,61 @@ def test_every_outcome_carries_an_explanation_and_an_action(reference):
         result = evaluate(extraction, reference, "hash-x")
         assert result.decision.explanation.strip(), result.outcome
         assert result.decision.next_action.strip(), result.outcome
+
+
+# ===========================================================================
+# Regression: the interaction between part-billing and duplicate detection
+# ===========================================================================
+def test_part_bills_of_different_amounts_are_not_suspected_duplicates(reference):
+    """Found by running the split-PO sequence live rather than in isolation.
+
+    Two part-bills against the same PO, days apart, are normal. They must not
+    be held as duplicates when their amounts differ.
+    """
+    po = next(p for p in reference.purchase_orders if p.po_number == "PO-4510")
+
+    first = evaluate(nova(D("2000"), "NPL-2026-0712", "2026-11-02"),
+                     reference, "h-a")
+    po.amount_invoiced_to_date = apply_approval(first)["_raw_after"]
+    reference.ledger.append(_ledger_entry_for(first, "L-TEST-1"))
+
+    second = evaluate(nova(D("1800"), "NPL-2026-0736", "2026-11-08"),
+                      reference, "h-b")
+    assert "DUPLICATE_SUSPECTED" not in second.codes
+    assert second.outcome == "APPROVED"
+
+
+def test_identical_part_bills_within_the_window_are_still_held(reference):
+    """The other half of the same rule, kept deliberately.
+
+    Two invoices for the SAME amount from the same vendor within seven days
+    are ambiguous even when a PO could absorb both, so a human decides. This
+    is why the sample data uses different quantities for the two part-bills.
+    """
+    po = next(p for p in reference.purchase_orders if p.po_number == "PO-4510")
+
+    first = evaluate(nova(D("2000"), "NPL-2026-0712", "2026-11-02"),
+                     reference, "h-a")
+    po.amount_invoiced_to_date = apply_approval(first)["_raw_after"]
+    reference.ledger.append(_ledger_entry_for(first, "L-TEST-1"))
+
+    same = evaluate(nova(D("2000"), "NPL-2026-0736", "2026-11-08"),
+                    reference, "h-b")
+    assert "DUPLICATE_SUSPECTED" in same.codes
+    assert same.outcome == "NEEDS_REVIEW"
+
+
+def _ledger_entry_for(result, invoice_id: str):
+    from backend.app.domain import LedgerEntry
+    invoice = result.invoice
+    return LedgerEntry(
+        invoice_id=invoice_id,
+        vendor_id=result.vendor.vendor_id,
+        invoice_number=invoice.invoice_number,
+        invoice_date=invoice.invoice_date,
+        currency=invoice.currency,
+        total_amount=invoice.total,
+        po_number=result.matched_po.po_number if result.matched_po else None,
+        outcome=result.outcome,
+        processed_at="2026-11-13T00:00:00",
+    )

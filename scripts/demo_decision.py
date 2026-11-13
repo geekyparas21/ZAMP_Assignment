@@ -90,7 +90,7 @@ SCENARIOS = {
 
     "2": ("Split PO - three invoices against PO-4510, run in sequence", [
         nova(D("2000"), "NPL-2026-0712", "2026-11-02"),
-        nova(D("2000"), "NPL-2026-0736", "2026-11-08"),
+        nova(D("1800"), "NPL-2026-0736", "2026-11-08"),
         nova(D("1500"), "NPL-2026-0759", "2026-11-12"),
     ]),
 

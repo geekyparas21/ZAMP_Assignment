@@ -77,12 +77,12 @@
     "vendor": "Nova Polymers Pvt Ltd",
     "number": "NPL-2026-0736",
     "po": "PO-4510",
-    "total": "2,00,600.00",
-    "total_raw": "200600.00",
-    "chars": 657,
+    "total": "1,80,540.00",
+    "total_raw": "180540.00",
+    "chars": 680,
     "pages": 1,
     "size_kb": 2.9,
-    "scenario": "Split PO 2/3 \u2014 second part-bill. Remaining balance drops to ~1,00,300.",
+    "scenario": "Split PO 2/3 \u2014 second part-bill. Remaining balance drops to ~1,20,360.",
     "expected_outcome": "APPROVED",
     "expected_reasons": [
       "PARTIAL_INVOICE_AGAINST_PO"

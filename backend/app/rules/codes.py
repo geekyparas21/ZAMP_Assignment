@@ -271,6 +271,14 @@ SCANNED_DOCUMENT = _register(
     "No text layer was found ({chars} characters over {pages} page(s)), so the pages "
     "were read as images.",
     "No action needed.")
+ALL_CHECKS_PASSED = _register(
+    "ALL_CHECKS_PASSED", Severity.INFO, "All checks passed",
+    "Vendor, PO, amounts and duplicate checks all passed with no variance.",
+    "Approve for payment.")
+
+# Declared after ALL_CHECKS_PASSED on purpose. These record *how* something was
+# identified, which is useful inside an expanded stage but is never the most
+# interesting thing to show as a run's headline reason on the dashboard.
 VENDOR_MATCHED_BY_GSTIN = _register(
     "VENDOR_MATCHED_BY_GSTIN", Severity.INFO, "Vendor identified by GSTIN",
     "GSTIN {gstin} matched {vendor_name} ({vendor_id}) exactly.",
@@ -283,10 +291,6 @@ PO_MATCHED_EXPLICIT = _register(
     "PO_MATCHED_EXPLICIT", Severity.INFO, "PO matched from the invoice",
     "The invoice quotes {po_reference}, matched to {po_number}.",
     "No action needed.")
-ALL_CHECKS_PASSED = _register(
-    "ALL_CHECKS_PASSED", Severity.INFO, "All checks passed",
-    "Vendor, PO, amounts and duplicate checks all passed with no variance.",
-    "Approve for payment.")
 
 
 @dataclass

@@ -152,13 +152,13 @@ def test_the_split_po_sequence_from_real_extractions(reference):
     second = evaluate(extracted("02b_split_po_nova_2of3"), reference, "h-2b")
     assert second.outcome == "APPROVED"
     po.amount_invoiced_to_date = apply_approval(second)["_raw_after"]
-    assert po.remaining_balance == D("100300.00")
+    assert po.remaining_balance == D("120360.00")
 
     third = evaluate(extracted("02c_split_po_nova_3of3_overbilled"), reference, "h-2c")
     assert third.outcome == "NEEDS_REVIEW"
     assert "PO_OVERBILLED" in third.codes
     evidence = next(f for f in third.findings if f.code == "PO_OVERBILLED").evidence
-    assert evidence["overage"] == "50,150.00"
+    assert evidence["overage"] == "30,090.00"
 
 
 def test_every_decision_from_real_output_can_explain_itself(reference, manifest):

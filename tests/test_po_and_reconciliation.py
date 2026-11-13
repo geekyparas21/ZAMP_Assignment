@@ -222,21 +222,21 @@ def test_partial_billing_is_noted_not_penalised(rules, po_by_number):
 def test_third_invoice_exceeding_the_remaining_balance_is_caught(rules, po_by_number):
     """Scenario 2, invoice 3 of 3, after two part-bills have been posted."""
     po = po_by_number["PO-4510"]
-    po.amount_invoiced_to_date = D("401200.00")          # two invoices posted
+    po.amount_invoiced_to_date = D("381140.00")          # two invoices posted
     try:
         inv = _nova_invoice(rules, D("1500"))
         _, findings = reconcile(inv, po, rules)
         assert "PO_OVERBILLED" in codes(findings)
         ev = evidence_for(findings, "PO_OVERBILLED")
-        assert ev["remaining"] == "1,00,300.00"
-        assert ev["overage"] == "50,150.00"
+        assert ev["remaining"] == "1,20,360.00"
+        assert ev["overage"] == "30,090.00"
     finally:
         po.amount_invoiced_to_date = D("0.00")
 
 
 def test_overbilling_evidence_names_every_number_a_human_needs(rules, po_by_number):
     po = po_by_number["PO-4510"]
-    po.amount_invoiced_to_date = D("401200.00")
+    po.amount_invoiced_to_date = D("381140.00")
     try:
         _, findings = reconcile(_nova_invoice(rules, D("1500")), po, rules)
         ev = evidence_for(findings, "PO_OVERBILLED")

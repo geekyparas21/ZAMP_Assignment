@@ -54,7 +54,7 @@ Decided in Phase 1 unless noted; later phases append rather than rewrite.
 |---|---|---|
 | 26 | A PO's `total_amount` is the committed value **inclusive of GST**, while `po_lines.unit_price` is **pre-tax**. | The total is then directly comparable with an invoice grand total, which is what the balance and over-billing rules work on; line-level price variance is naturally a pre-tax comparison. |
 | 27 | GSTINs in the seed data carry **genuine, computed mod-36 check digits**, not plausible-looking strings. | The pipeline validates the checksum, so the reference data has to survive its own validator. |
-| 28 | The split-PO scenario uses ₹5,01,500 / ₹2,00,600 × 2 / ₹1,50,450 rather than the round ₹5,00,000 / ₹2,00,000 figures in the brief. | Round grand totals are impossible once 18% GST is applied to a realistic rate × quantity. The structure (two part-bills, then a third that over-bills by ₹50,150) is unchanged. |
+| 28 | The split-PO scenario uses ₹5,01,500 / ₹2,00,600 / ₹1,80,540 / ₹1,50,450 rather than the round ₹5,00,000 / ₹2,00,000 figures in the brief. | Round grand totals are impossible once 18% GST is applied to a realistic rate × quantity. The structure (two part-bills, then a third that over-bills, now by ₹30,090) is unchanged. The two part-bills carry **different quantities** on purpose — see #45. |
 | 29 | Scenario 1b (ambiguous PO inference) is a **text** PDF, not a scanned one. | Scenario 1 already proves the vision path. Keeping 1b text isolates the variable being demonstrated — ambiguity in inference — and keeps the demo quick. |
 | 30 | One sample (`03b`, Suryodaya) quotes rates **inclusive of GST**. | The brief calls out "tax may be embedded or separated". The extractor must flag it and validation must back-compute the taxable value before any PO comparison. |
 | 31 | `LINE_NOT_ON_PO` is only escalated when the unmatched line exceeds the same ±2%/±₹500 band used for totals. | Otherwise the ₹180 freight line in scenario 4a would force a review and defeat the point of that scenario. Incidental charges below the materiality band are noted, not escalated. |
@@ -76,3 +76,15 @@ Decided in Phase 1 unless noted; later phases append rather than rewrite.
 | 42 | Page images are rendered at **160 dpi, and only for scanned documents**. | Rendering every page of every text PDF would consume most of the run's time budget for nothing. |
 | 43 | On HTTP 429 the client switches to the fallback model immediately rather than exhausting retries on the primary. | Per-model quotas are separate; burning the backoff budget on an exhausted model wastes the demo's time. |
 | 44 | Fixtures are **real recorded Gemini responses**, and the test suite runs offline against them, with `pytest -m live` as the opt-in real-API run. | Keeps CI deterministic and preserves free-tier quota for demos, while still proving the rules work on genuine model output rather than hand-written convenience data. |
+
+## Pipeline orchestration (Phase 5)
+
+| # | Assumption | Rationale |
+|---|---|---|
+| 45 | The two split-PO part-bills bill **different quantities** (2000 kg and 1800 kg), not the same amount twice. | Found by running the sequence live: two invoices of the *same* amount from one vendor six days apart correctly trip `DUPLICATE_SUSPECTED`, which masked the over-billing the scenario exists to show. The rule is right; the sample data was wrong. Both behaviours now have regression tests. |
+| 46 | Every processed invoice is written to the ledger — approved, held **and** rejected — but only an approval moves the PO balance. | Duplicate detection must be able to see held invoices, otherwise a re-send of something already under review would sail through. |
+| 47 | A PO whose invoiced-to-date reaches its total is automatically marked `closed`. | Matches how an AP team works, and means a later invoice against it is rejected rather than silently over-billing. |
+| 48 | The pipeline runs in a worker thread; stage events reach the browser over SSE via a thread-safe bus. | PDF parsing and the Gemini call are blocking work. Running them on the event loop would freeze every other request, including the SSE stream itself. |
+| 49 | An SSE client receives a **snapshot of stored steps first**, then the live tail. | Removes the race between starting a run and subscribing to it, and means the dashboard replays a past run through exactly the same code path as a live one. |
+| 50 | A failure to publish a live event never fails the run. | Progress updates are cosmetic; the decision and its audit trail are persisted regardless. |
+| 51 | Uploads are capped at 15 MB. | Comfortably above any real invoice, low enough that a bad upload cannot exhaust the free tier's memory. |

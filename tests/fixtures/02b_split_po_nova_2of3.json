@@ -1,11 +1,11 @@
 {
-  "model": "gemini-3.5-flash",
-  "attempts": 1,
+  "model": "gemini-3.5-flash-lite",
+  "attempts": 3,
   "input_kind": "text",
   "tokens": {
-    "prompt": 780,
+    "prompt": 783,
     "response": 473,
-    "total": 2220
+    "total": 1256
   },
   "warnings": [],
   "response": {
@@ -23,16 +23,16 @@
       {
         "description": "Polypropylene granules PP-H110",
         "hsn": "3902",
-        "qty": "2000",
+        "qty": "1800",
         "unit": "KG",
         "unit_price": "85.00",
-        "amount": "170000.00"
+        "amount": "153000.00"
       }
     ],
-    "subtotal": "170000.00",
-    "tax_total": "30600.00",
+    "subtotal": "153000.00",
+    "tax_total": "27540.00",
     "tax_rate_pct": "18",
-    "total": "200600.00",
+    "total": "180540.00",
     "tax_inclusive": false,
     "bank_account_last4": "7781",
     "notes": null,
