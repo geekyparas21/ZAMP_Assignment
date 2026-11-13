@@ -4,6 +4,8 @@ From invoice PDF to a reasoned, auditable AP decision — with every step visibl
 
 Built for the Zamp AI Solutions Analyst case study (**PS-1 · Finance / AP**).
 
+**Live: https://invoice-pipeline-837p.onrender.com**
+
 ---
 
 ## What it does
@@ -31,6 +33,20 @@ the whole thing is unit-tested without touching the network.
 
 That is the answer to "why didn't you just let the model decide?": auditability, reproducibility,
 and control over financial risk.
+
+## The interface
+
+| Page | What it does |
+|---|---|
+| **New run** | Drag-and-drop an invoice PDF, or run any of 14 sample invoices with one click. Each sample says which scenario it exercises. |
+| **Live run view** | The ten stages animate `pending → running → result` from real backend events over Server-Sent Events. Expand any stage for its evidence: extracted fields, rules evaluated, PO candidates with scores, the reconciliation table. Alongside it, the original PDF and every field read from it with a confidence score. |
+| **Decision card** | Outcome, a plain-English explanation containing the actual figures, the recommended next action, every reason code with evidence, a ready-to-send draft email, and a downloadable audit JSON. |
+| **Dashboard** | KPI tiles, full run history, filter by outcome, search by vendor / invoice number / PO. Click any row to replay that run exactly as it happened. |
+| **Reference data** | Vendors, purchase orders with live remaining balances, the processed-invoice ledger, the policy file, all reason codes, AI usage in the last 24h, and a "Reset demo data" button. |
+
+Nothing in the UI is simulated: no fake timers, no hardcoded outcomes. Every stage
+you see is a real backend event, and the dashboard replays past runs from stored
+step records.
 
 ## Documentation
 
@@ -137,6 +153,7 @@ Render instance removes the sleep entirely if you prefer not to manage it.
 Under active construction, built in phases. This README is expanded as each phase lands; setup,
 deployment and limitations sections arrive with the phases that make them true.
 
-Phases 1-4 complete: process map and assumptions, reference data and sample invoices,
-the deterministic decision engine (234 tests), and Gemini extraction for both text
-and scanned PDFs. The pipeline orchestration, live run view and dashboard are next.
+Working end-to-end and deployed. All 14 sample invoices produce their expected
+outcome on the live service, after a reset, in order. 248 tests pass offline.
+
+Remaining: the demo script, and a final documentation pass.
