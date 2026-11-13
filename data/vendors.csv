@@ -1,0 +1,11 @@
+vendor_id,legal_name,aliases,gstin,status,payment_terms,bank_account_last4
+V001,Bharat Steel Industries Private Limited,Bharat Steel Ind.|Bharat Steel Industries|Bharat Steel,27AABCB1234D1ZC,approved,Net 30,4412
+V002,Nova Polymers Private Limited,Nova Polymers|NOVA POLYMERS PVT LTD|Nova Polymer,29AACCN5678E1Z5,approved,Net 45,7781
+V003,Kaveri Logistics Services Private Limited,Kaveri Logistics|Kaveri Logistics Svcs,33AADCK9012F1ZW,approved,Net 15,2290
+V004,Deccan Precision Tools Private Limited,Deccan Precision Tools|Deccan Precision|Deccan Tools,36AAECD3456G1ZQ,approved,Net 30,5533
+V005,Sunrise Packaging Company,Sunrise Packaging|Sunrise Packaging Co.,24AAFCS7890H1ZZ,approved,Net 30,9021
+V006,Orient Electricals Limited,Orient Electricals|Orient Electrical Ltd,07AAGCO2345J1ZD,blocked,Net 30,1187
+V007,Himalaya Chemicals Private Limited,Himalaya Chemicals|Himalaya Chem,06AAHCH6789K1ZV,pending,Net 60,3344
+V008,Vega Instruments Private Limited,Vega Instruments|Vega Instrument Pvt Ltd,19AAICV0123L1Z7,approved,Net 30,6655
+V009,Trident Fasteners and Hardware Private Limited,Trident Fasteners|Trident Fasteners & Hardware,23AAJCT4567M1ZT,approved,Net 30,8809
+V010,Suryodaya Engineering Works Private Limited,Suryodaya Engineering|Suryodaya Engg Works,08AAKCS8901N1ZP,approved,Net 45,4470

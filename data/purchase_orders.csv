@@ -1,0 +1,15 @@
+po_number,vendor_id,issue_date,status,currency,total_amount,amount_invoiced_to_date,note
+PO-4501,V001,2026-10-02,open,INR,107026.00,0.00,scenario 0 - happy path
+PO-4510,V002,2026-09-18,open,INR,501500.00,0.00,"scenario 2 - split PO, 5000kg committed"
+PO-4520,V004,2026-10-20,open,INR,165790.00,0.00,"scenario 1 - unique open PO, inferred from amount+lines"
+PO-4521,V005,2026-10-28,open,INR,162840.00,0.00,scenario 1b - ambiguous candidate A
+PO-4522,V005,2026-11-03,open,INR,165554.00,0.00,scenario 1b - ambiguous candidate B
+PO-4530,V009,2026-10-25,open,INR,135700.00,0.00,"scenario 4a - freight adds Rs 180, inside tolerance"
+PO-4531,V003,2026-10-14,open,INR,200600.00,0.00,scenario 4b - invoice raises rate to 9180.00
+PO-4540,V008,2026-09-30,closed,INR,94400.00,94400.00,scenario 3 - fully billed by INV-2026-0042
+PO-4550,V010,2026-10-08,open,INR,145140.00,72570.00,"scenario 3b - one delivery billed, one outstanding"
+PO-4505,V001,2026-08-12,closed,INR,127440.00,127440.00,closed PO - rejects a late invoice
+PO-4560,V007,2026-11-02,open,INR,507400.00,0.00,pending vendor
+PO-4570,V006,2026-10-11,open,INR,388928.00,0.00,blocked vendor
+PO-4580,V008,2026-11-05,open,INR,130980.00,0.00,"open, unused"
+PO-4590,V001,2026-11-06,open,INR,54280.00,0.00,"open, unused"

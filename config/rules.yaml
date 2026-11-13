@@ -1,0 +1,94 @@
+# ---------------------------------------------------------------------------
+# AP decision policy — every threshold the decision engine uses lives here.
+#
+# This file is policy, not code. An AP manager should be able to read it,
+# understand it, and change it without a developer. It is loaded at runtime and
+# displayed verbatim on the Reference Data page of the UI, so what the engine
+# applies and what the screen claims it applies cannot drift apart.
+# ---------------------------------------------------------------------------
+
+meta:
+  policy_version: "1.0"
+  company: "Acme Manufacturing Pvt Ltd"
+  base_currency: "INR"
+  matching_model: "2-way"   # invoice <-> purchase order
+
+# --- Amount tolerances -----------------------------------------------------
+tolerance:
+  # An invoice total may differ from the expected amount by the SMALLER of
+  # these two bands. The percentage alone grows too generous on large
+  # invoices; the absolute cap bounds the exposure on any single document.
+  total_variance_pct: 2.0
+  total_variance_abs: 500.00
+
+  # Only OVER-billing breaches tolerance. An invoice below the expected amount
+  # is treated as partial billing against the PO, which carries no buyer risk.
+  under_billing_is_a_breach: false
+
+  # Per-line checks. A total-level check alone would hide one inflated SKU
+  # inside an otherwise correct invoice.
+  line_unit_price_variance_pct: 5.0
+  line_quantity_variance_pct: 2.0
+
+  # Rounding noise that is never worth a human's time.
+  arithmetic_rounding_abs: 1.00
+
+# --- Duplicate detection ---------------------------------------------------
+duplicates:
+  # Byte-identical file, or same vendor + same normalised invoice number.
+  # Unambiguous -> REJECTED.
+  confirmed_rejects: true
+  # Same vendor + same total within this window but a different number.
+  # Could be coincidence -> NEEDS_REVIEW, never an automatic reject.
+  suspected_window_days: 7
+  suspected_amount_tolerance_abs: 1.00
+
+# --- Vendor matching -------------------------------------------------------
+vendor:
+  # GSTIN is tried first and is decisive. Name matching is the fallback.
+  name_match_auto_accept: 0.88
+  name_match_review_floor: 0.70   # below this: no match at all
+  # Bank details on an invoice differing from the vendor master is the
+  # classic payment-redirection fraud signal. Always a human decision.
+  bank_mismatch_requires_review: true
+  validate_gstin_checksum: true
+
+# --- Purchase order matching ----------------------------------------------
+po_matching:
+  # When no usable PO reference is on the document, candidates are inferred
+  # from the vendor's open POs and scored on amount and line similarity.
+  inference_min_score: 0.75
+  # The top candidate must also beat the runner-up by this margin, otherwise
+  # the choice is ambiguous and a human picks.
+  inference_min_margin: 0.15
+  score_weights:
+    amount_similarity: 0.50
+    line_similarity: 0.35
+    recency: 0.15
+  # An invoiced line with no counterpart on the PO is only escalated when it
+  # is material; it is measured against the same tolerance band as the total.
+  unmatched_line_uses_total_tolerance: true
+
+# --- Extraction confidence -------------------------------------------------
+extraction:
+  # Below this, a critical field is routed to a human rather than guessed at.
+  min_field_confidence: 0.70
+  critical_fields:
+    - vendor_name
+    - invoice_number
+    - invoice_date
+    - total
+  # A page yielding fewer than this many extractable characters is treated as
+  # scanned, and every page is sent to the model as an image instead of text.
+  scanned_page_char_threshold: 120
+
+# --- Tax -------------------------------------------------------------------
+tax:
+  standard_gst_rate_pct: 18.0
+  accepted_gst_rates_pct: [0.0, 5.0, 12.0, 18.0, 28.0]
+
+# --- Payment ---------------------------------------------------------------
+payment:
+  # Payment terms are taken from the vendor master, not from the invoice:
+  # vendors sometimes state terms more favourable than the ones agreed.
+  terms_source: "vendor_master"

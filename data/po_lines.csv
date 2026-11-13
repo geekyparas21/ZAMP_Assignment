@@ -1,0 +1,17 @@
+po_number,line_no,sku,description,qty,unit_price,line_amount
+PO-4501,1,MS-PLT-10,MS Plate 10mm IS2062 Gr.B,120,485.00,58200.00
+PO-4501,2,MS-ANG-5050,MS Angle 50x50x5mm,200,162.50,32500.00
+PO-4510,1,PP-H110,Polypropylene granules PP-H110 (kg),5000,85.00,425000.00
+PO-4520,1,CNMG120408,Carbide turning insert CNMG120408,500,212.00,106000.00
+PO-4520,2,PCLNR2525,Tool holder PCLNR2525M12,10,3450.00,34500.00
+PO-4521,1,BOX-5PLY-A,Corrugated box 5-ply 600x400x300mm,3000,46.00,138000.00
+PO-4522,1,BOX-5PLY-A,Corrugated box 5-ply 600x400x300mm,3050,46.00,140300.00
+PO-4530,1,HEX-M12X50,Hex bolt M12x50 Gr.8.8 zinc plated,10000,11.50,115000.00
+PO-4531,1,FRT-PUN-MAA,"Road freight Pune to Chennai, per trip",20,8500.00,170000.00
+PO-4540,1,PG-DIG-100,Digital pressure gauge 0-100 bar,40,2000.00,80000.00
+PO-4550,1,BRK-ASSY-7,Fabricated bracket assembly type-7,300,410.00,123000.00
+PO-4505,1,MS-CHNL-100,MS Channel 100x50mm,150,720.00,108000.00
+PO-4560,1,CHM-NAOH-50,Caustic soda flakes 50kg bag,200,2150.00,430000.00
+PO-4570,1,CBL-4C-25,4-core armoured cable 25sqmm (m),800,412.00,329600.00
+PO-4580,1,FLW-MTR-DN50,Electromagnetic flow meter DN50,6,18500.00,111000.00
+PO-4590,1,MS-RND-20,MS Round bar 20mm,500,92.00,46000.00

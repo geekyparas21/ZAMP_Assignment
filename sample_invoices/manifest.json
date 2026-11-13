@@ -1,0 +1,254 @@
+[
+  {
+    "file": "00_happy_path_bharat_steel.pdf",
+    "kind": "text",
+    "template": "A",
+    "vendor": "Bharat Steel Ind.",
+    "number": "BSI-2026-1042",
+    "po": "PO-4501",
+    "total": "1,07,026.00",
+    "total_raw": "107026.00",
+    "chars": 700,
+    "pages": 1,
+    "size_kb": 3.0,
+    "scenario": "Happy path \u2014 approved vendor, explicit PO, amounts match the PO exactly.",
+    "expected_outcome": "APPROVED",
+    "expected_reasons": []
+  },
+  {
+    "file": "01_scanned_no_po_deccan.pdf",
+    "kind": "scanned",
+    "template": "C",
+    "vendor": "Deccan Precision Tools Pvt. Ltd.",
+    "number": "DPT/2026/0247",
+    "po": "(none)",
+    "total": "1,65,790.00",
+    "total_raw": "165790.00",
+    "chars": 0,
+    "pages": 1,
+    "size_kb": 73.3,
+    "scenario": "Scanned image-only PDF with no PO reference \u2014 PO must be inferred.",
+    "expected_outcome": "APPROVED",
+    "expected_reasons": [
+      "SCANNED_DOCUMENT",
+      "PO_INFERRED_HIGH_CONFIDENCE"
+    ]
+  },
+  {
+    "file": "01b_ambiguous_po_sunrise.pdf",
+    "kind": "text",
+    "template": "B",
+    "vendor": "Sunrise Packaging Co.",
+    "number": "SPC-2026-0417",
+    "po": "(none)",
+    "total": "1,63,925.60",
+    "total_raw": "163925.60",
+    "chars": 681,
+    "pages": 1,
+    "size_kb": 2.9,
+    "scenario": "No PO reference and two near-identical open POs \u2014 inference is ambiguous.",
+    "expected_outcome": "NEEDS_REVIEW",
+    "expected_reasons": [
+      "PO_INFERRED_AMBIGUOUS"
+    ]
+  },
+  {
+    "file": "02a_split_po_nova_1of3.pdf",
+    "kind": "text",
+    "template": "B",
+    "vendor": "Nova Polymers Pvt Ltd",
+    "number": "NPL-2026-0712",
+    "po": "PO-4510",
+    "total": "2,00,600.00",
+    "total_raw": "200600.00",
+    "chars": 657,
+    "pages": 1,
+    "size_kb": 2.9,
+    "scenario": "Split PO 1/3 \u2014 part-bills PO-4510. Approves and moves the PO balance.",
+    "expected_outcome": "APPROVED",
+    "expected_reasons": [
+      "PARTIAL_INVOICE_AGAINST_PO"
+    ]
+  },
+  {
+    "file": "02b_split_po_nova_2of3.pdf",
+    "kind": "text",
+    "template": "B",
+    "vendor": "Nova Polymers Pvt Ltd",
+    "number": "NPL-2026-0736",
+    "po": "PO-4510",
+    "total": "2,00,600.00",
+    "total_raw": "200600.00",
+    "chars": 657,
+    "pages": 1,
+    "size_kb": 2.9,
+    "scenario": "Split PO 2/3 \u2014 second part-bill. Remaining balance drops to ~1,00,300.",
+    "expected_outcome": "APPROVED",
+    "expected_reasons": [
+      "PARTIAL_INVOICE_AGAINST_PO"
+    ]
+  },
+  {
+    "file": "02c_split_po_nova_3of3_overbilled.pdf",
+    "kind": "text",
+    "template": "B",
+    "vendor": "Nova Polymers Pvt Ltd",
+    "number": "NPL-2026-0759",
+    "po": "PO-4510",
+    "total": "1,50,450.00",
+    "total_raw": "150450.00",
+    "chars": 679,
+    "pages": 1,
+    "size_kb": 2.9,
+    "scenario": "Split PO 3/3 \u2014 exceeds the remaining PO balance. Must be held, not paid.",
+    "expected_outcome": "NEEDS_REVIEW",
+    "expected_reasons": [
+      "PO_OVERBILLED"
+    ]
+  },
+  {
+    "file": "03_duplicate_vega.pdf",
+    "kind": "text",
+    "template": "A",
+    "vendor": "Vega Instruments Pvt Ltd",
+    "number": "INV/2026/42",
+    "po": "PO-4540",
+    "total": "94,400.00",
+    "total_raw": "94400.00",
+    "chars": 656,
+    "pages": 1,
+    "size_kb": 2.9,
+    "scenario": "Re-send of an already-paid invoice with the number reformatted (INV/2026/42 vs INV-2026-0042).",
+    "expected_outcome": "REJECTED",
+    "expected_reasons": [
+      "DUPLICATE_CONFIRMED_NUMBER"
+    ]
+  },
+  {
+    "file": "03b_suspected_duplicate_suryodaya.pdf",
+    "kind": "text",
+    "template": "C",
+    "vendor": "Suryodaya Engg Works",
+    "number": "SEW-2026-131",
+    "po": "PO-4550",
+    "total": "72,570.00",
+    "total_raw": "72570.00",
+    "chars": 734,
+    "pages": 1,
+    "size_kb": 2.8,
+    "scenario": "Different invoice number, same vendor and amount within 7 days. Rates are quoted GST-inclusive.",
+    "expected_outcome": "NEEDS_REVIEW",
+    "expected_reasons": [
+      "DUPLICATE_SUSPECTED",
+      "TAX_INCLUSIVE_PRESENTATION"
+    ]
+  },
+  {
+    "file": "04a_within_tolerance_trident.pdf",
+    "kind": "text",
+    "template": "A",
+    "vendor": "Trident Fasteners & Hardware",
+    "number": "TFH-2026-2288",
+    "po": "PO-4530",
+    "total": "1,35,880.00",
+    "total_raw": "135880.00",
+    "chars": 736,
+    "pages": 1,
+    "size_kb": 3.0,
+    "scenario": "Freight of Rs 180 pushes the total above the PO \u2014 but inside tolerance.",
+    "expected_outcome": "APPROVED",
+    "expected_reasons": [
+      "TOTAL_VARIANCE_WITHIN_TOLERANCE"
+    ]
+  },
+  {
+    "file": "04b_price_creep_kaveri.pdf",
+    "kind": "text",
+    "template": "B",
+    "vendor": "Kaveri Logistics Services",
+    "number": "KLS-2026-0588",
+    "po": "PO-4531",
+    "total": "2,16,648.00",
+    "total_raw": "216648.00",
+    "chars": 689,
+    "pages": 1,
+    "size_kb": 2.9,
+    "scenario": "Unit rate raised 8% above the PO rate \u2014 outside tolerance, must be held.",
+    "expected_outcome": "NEEDS_REVIEW",
+    "expected_reasons": [
+      "PRICE_VARIANCE_EXCEEDS_TOLERANCE"
+    ]
+  },
+  {
+    "file": "05_blocked_vendor_orient.pdf",
+    "kind": "text",
+    "template": "A",
+    "vendor": "Orient Electricals Ltd",
+    "number": "OEL-2026-0901",
+    "po": "PO-4570",
+    "total": "3,88,928.00",
+    "total_raw": "388928.00",
+    "chars": 681,
+    "pages": 1,
+    "size_kb": 2.9,
+    "scenario": "Vendor is blocked on the vendor master \u2014 must be rejected outright.",
+    "expected_outcome": "REJECTED",
+    "expected_reasons": [
+      "VENDOR_BLOCKED"
+    ]
+  },
+  {
+    "file": "06_quotation_not_invoice.pdf",
+    "kind": "text",
+    "template": "C",
+    "vendor": "Deccan Precision Tools Pvt. Ltd.",
+    "number": "QTN-2026-0088",
+    "po": "(none)",
+    "total": "1,23,310.00",
+    "total_raw": "123310.00",
+    "chars": 756,
+    "pages": 1,
+    "size_kb": 2.8,
+    "scenario": "Not an invoice at all \u2014 a quotation. Must be detected and rejected.",
+    "expected_outcome": "REJECTED",
+    "expected_reasons": [
+      "NOT_AN_INVOICE"
+    ]
+  },
+  {
+    "file": "07_missing_invoice_number_bharat.pdf",
+    "kind": "text",
+    "template": "A",
+    "vendor": "Bharat Steel Ind.",
+    "number": "(missing)",
+    "po": "PO-4590",
+    "total": "54,280.00",
+    "total_raw": "54280.00",
+    "chars": 627,
+    "pages": 1,
+    "size_kb": 2.9,
+    "scenario": "No invoice number anywhere on the document \u2014 a critical field is missing.",
+    "expected_outcome": "NEEDS_REVIEW",
+    "expected_reasons": [
+      "MISSING_INVOICE_NUMBER"
+    ]
+  },
+  {
+    "file": "08_bank_mismatch_bharat.pdf",
+    "kind": "text",
+    "template": "A",
+    "vendor": "Bharat Steel Ind.",
+    "number": "BSI-2026-1077",
+    "po": "PO-4590",
+    "total": "54,280.00",
+    "total_raw": "54280.00",
+    "chars": 703,
+    "pages": 1,
+    "size_kb": 2.9,
+    "scenario": "Bank account differs from the vendor master \u2014 payment-redirection signal.",
+    "expected_outcome": "NEEDS_REVIEW",
+    "expected_reasons": [
+      "VENDOR_BANK_MISMATCH"
+    ]
+  }
+]
