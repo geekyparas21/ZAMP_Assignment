@@ -32,3 +32,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# local run artefacts
+server.log
+frozen.tmp

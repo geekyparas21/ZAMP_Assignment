@@ -1,0 +1,15 @@
+# Production dependencies, pinned to versions verified locally.
+
+fastapi==0.162.5
+uvicorn[standard]==0.54.0
+sqlmodel==0.0.49
+psycopg[binary]==3.3.9
+python-multipart==0.0.33
+python-dotenv==1.2.4
+pyyaml==6.0.3
+pydantic==2.14.3
+google-genai==3.3.0
+pdfplumber==0.11.10
+pymupdf==2.1
+pillow==13.0.0
+reportlab==5.1.0
