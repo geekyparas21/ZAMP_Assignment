@@ -7,11 +7,11 @@ import { SeverityBadge, StageIcon, formatDuration } from './ui'
 // rather than dumping JSON on the screen.
 function StageDetail({ stage, detail }) {
   if (!detail || Object.keys(detail).length === 0) {
-    return <p className="text-sm text-ink-500">No further detail recorded.</p>
+    return <p className="text-sm text-muted">No further detail recorded.</p>
   }
 
   if (detail.skipped) {
-    return <p className="text-sm text-ink-500">{detail.reason ?? 'Not applicable to this run.'}</p>
+    return <p className="text-sm text-muted">{detail.reason ?? 'Not applicable to this run.'}</p>
   }
 
   switch (stage) {
@@ -27,10 +27,10 @@ function StageDetail({ stage, detail }) {
           />
           {detail.text_preview && (
             <div>
-              <p className="mb-1 text-xs font-medium tracking-wide text-ink-500 uppercase">
+              <p className="mb-1 text-xs font-medium tracking-wide text-muted uppercase">
                 Text found in the PDF
               </p>
-              <pre className="max-h-56 overflow-auto rounded-lg bg-ink-950 p-3 text-[11px] leading-relaxed text-ink-100">
+              <pre className="max-h-56 overflow-auto rounded-lg bg-text p-3 text-[11px] leading-relaxed text-border">
                 {detail.text_preview}
               </pre>
             </div>
@@ -51,10 +51,10 @@ function StageDetail({ stage, detail }) {
           />
           {detail.response && (
             <details>
-              <summary className="cursor-pointer text-xs font-medium text-brand-700 hover:underline">
+              <summary className="cursor-pointer text-xs font-medium text-accent hover:underline">
                 Show the raw model response
               </summary>
-              <pre className="mt-2 max-h-72 overflow-auto rounded-lg bg-ink-950 p-3 text-[11px] leading-relaxed text-ink-100">
+              <pre className="mt-2 max-h-72 overflow-auto rounded-lg bg-text p-3 text-[11px] leading-relaxed text-border">
                 {JSON.stringify(detail.response, null, 2)}
               </pre>
             </details>
@@ -161,7 +161,7 @@ function StageDetail({ stage, detail }) {
 
     default:
       return (
-        <pre className="max-h-72 overflow-auto rounded-lg bg-ink-100 p-3 text-[11px] leading-relaxed text-ink-700">
+        <pre className="max-h-72 overflow-auto rounded-lg bg-border p-3 text-[11px] leading-relaxed text-text-2">
           {JSON.stringify(detail, null, 2)}
         </pre>
       )
@@ -209,9 +209,9 @@ function Facts({ rows }) {
   return (
     <dl className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
       {visible.map(([label, value]) => (
-        <div key={label} className="flex justify-between gap-3 border-b border-ink-100 py-1 text-sm">
-          <dt className="shrink-0 text-ink-500">{label}</dt>
-          <dd className="tnum text-right font-medium text-ink-900">{String(value)}</dd>
+        <div key={label} className="flex justify-between gap-3 border-b border-border py-1 text-sm">
+          <dt className="shrink-0 text-muted">{label}</dt>
+          <dd className="tnum text-right font-medium text-text">{String(value)}</dd>
         </div>
       ))}
     </dl>
@@ -221,19 +221,19 @@ function Facts({ rows }) {
 function ScoreTable({ caption, head, rows, highlight = [] }) {
   return (
     <div>
-      <p className="mb-1 text-xs font-medium tracking-wide text-ink-500 uppercase">{caption}</p>
-      <div className="overflow-x-auto rounded-lg ring-1 ring-ink-300/60">
+      <p className="mb-1 text-xs font-medium tracking-wide text-muted uppercase">{caption}</p>
+      <div className="overflow-x-auto rounded-lg ring-1 ring-border">
         <table className="w-full text-sm">
-          <thead className="bg-ink-50 text-left text-xs text-ink-500">
+          <thead className="bg-surface-2 text-left text-xs text-muted">
             <tr>
               {head.map((h) => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}
             </tr>
           </thead>
-          <tbody className="divide-y divide-ink-100">
+          <tbody className="divide-y divide-border">
             {rows.map((row, index) => (
-              <tr key={index} className={highlight[index] ? 'bg-review-100/40' : undefined}>
+              <tr key={index} className={highlight[index] ? 'bg-warn-soft' : undefined}>
                 {row.map((cell, cellIndex) => (
-                  <td key={cellIndex} className={`px-3 py-2 ${cellIndex === 0 ? 'text-ink-900' : 'tnum text-ink-700'}`}>
+                  <td key={cellIndex} className={`px-3 py-2 ${cellIndex === 0 ? 'text-text' : 'tnum text-text-2'}`}>
                     {String(cell)}
                   </td>
                 ))}
@@ -258,7 +258,7 @@ export default function StageTimeline({ steps, findingsByStage }) {
   }
 
   return (
-    <ol className="divide-y divide-ink-300/60">
+    <ol className="divide-y divide-border">
       {steps.map((step, index) => {
         const isOpen = open.has(step.stage)
         const findings = findingsByStage?.[step.stage] ?? []
@@ -271,7 +271,7 @@ export default function StageTimeline({ steps, findingsByStage }) {
               disabled={!expandable}
               aria-expanded={isOpen}
               className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
-                expandable ? 'hover:bg-ink-50' : 'cursor-default'
+                expandable ? 'hover:bg-surface-2' : 'cursor-default'
               }`}
             >
               {/* rail */}
@@ -284,50 +284,50 @@ export default function StageTimeline({ steps, findingsByStage }) {
                   <StageIcon status={step.status} />
                 </span>
                 {index < steps.length - 1 && (
-                  <span className="absolute top-6 h-[calc(100%-0.25rem)] w-px bg-ink-300" aria-hidden="true" />
+                  <span className="absolute top-6 h-[calc(100%-0.25rem)] w-px bg-faint" aria-hidden="true" />
                 )}
               </div>
 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2">
-                  <span className="text-xs text-ink-300 tnum">{String(index + 1).padStart(2, '0')}</span>
-                  <span className={`font-medium ${step.status === 'pending' ? 'text-ink-300' : 'text-ink-900'}`}>
+                  <span className="text-xs text-faint tnum">{String(index + 1).padStart(2, '0')}</span>
+                  <span className={`font-medium ${step.status === 'pending' ? 'text-faint' : 'text-text'}`}>
                     {step.title}
                   </span>
                   {step.duration_ms != null && step.status !== 'pending' && (
-                    <span className="tnum text-xs text-ink-500">{formatDuration(step.duration_ms)}</span>
+                    <span className="tnum text-xs text-muted">{formatDuration(step.duration_ms)}</span>
                   )}
                 </div>
                 {step.summary && (
-                  <p className="mt-0.5 text-sm text-ink-700">{step.summary}</p>
+                  <p className="mt-0.5 text-sm text-text-2">{step.summary}</p>
                 )}
                 {step.status === 'running' && !step.summary && (
-                  <p className="mt-0.5 text-sm text-brand-700">Working…</p>
+                  <p className="mt-0.5 text-sm text-accent">Working…</p>
                 )}
               </div>
 
               {expandable && (
                 <ChevronRight
-                  className={`mt-0.5 h-4 w-4 shrink-0 text-ink-500 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                  className={`mt-0.5 h-4 w-4 shrink-0 text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}
                   aria-hidden="true"
                 />
               )}
             </button>
 
             {isOpen && (
-              <div className="space-y-4 border-t border-ink-100 bg-ink-50/60 px-4 py-4 pl-12">
+              <div className="space-y-4 border-t border-border bg-surface-2 px-4 py-4 pl-12">
                 {findings.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
+                    <p className="text-xs font-medium tracking-wide text-muted uppercase">
                       Rules that fired
                     </p>
                     {findings.map((finding, i) => (
-                      <div key={i} className="rounded-lg bg-white p-3 ring-1 ring-ink-300/60">
+                      <div key={i} className="rounded-lg bg-surface p-3 ring-1 ring-border">
                         <div className="flex flex-wrap items-center gap-2">
                           <SeverityBadge severity={finding.severity} />
-                          <span className="font-mono text-[11px] text-ink-500">{finding.code}</span>
+                          <span className="font-mono text-[11px] text-muted">{finding.code}</span>
                         </div>
-                        <p className="mt-1.5 text-sm text-ink-900">{finding.message}</p>
+                        <p className="mt-1.5 text-sm text-text">{finding.message}</p>
                       </div>
                     ))}
                   </div>

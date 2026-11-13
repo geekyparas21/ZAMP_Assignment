@@ -26,7 +26,7 @@ function CopyButton({ text, label = 'Copy' }) {
 
   return (
     <Button variant="secondary" onClick={copy}>
-      {copied ? <Check className="h-4 w-4 text-approved-700" /> : <Copy className="h-4 w-4" />}
+      {copied ? <Check className="h-4 w-4 text-ok" /> : <Copy className="h-4 w-4" />}
       {copied ? 'Copied' : label}
     </Button>
   )
@@ -40,7 +40,7 @@ export default function DecisionCard({ run }) {
   const notes = findings.filter((f) => f.severity === 'INFO')
 
   return (
-    <section className="overflow-hidden rounded-xl border border-ink-300/60 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
       <div className={`h-1.5 w-full ${style.bar}`} aria-hidden="true" />
 
       <div className="space-y-5 p-5">
@@ -50,7 +50,7 @@ export default function DecisionCard({ run }) {
             <Icon className={`mt-0.5 h-7 w-7 shrink-0 ${style.text}`} aria-hidden="true" />
             <div>
               <h2 className={`text-xl font-semibold ${style.text}`}>{style.label}</h2>
-              <p className="mt-1 max-w-2xl text-ink-700">{run.explanation}</p>
+              <p className="mt-1 max-w-2xl text-text-2">{run.explanation}</p>
             </div>
           </div>
           <a href={api.auditUrl(run.id)} download>
@@ -63,21 +63,21 @@ export default function DecisionCard({ run }) {
 
         {/* recommended action */}
         {run.next_action && (
-          <div className="rounded-lg bg-brand-50 p-4 ring-1 ring-brand-600/15">
-            <p className="text-xs font-medium tracking-wide text-brand-700 uppercase">
+          <div className="rounded-lg bg-accent-soft p-4 ring-1 ring-accent/20">
+            <p className="text-xs font-medium tracking-wide text-accent uppercase">
               Recommended next action
             </p>
-            <p className="mt-1 text-ink-900">{run.next_action}</p>
+            <p className="mt-1 text-text">{run.next_action}</p>
           </div>
         )}
 
         {/* ledger effect */}
         {run.ledger_effect && (
-          <div className="rounded-lg bg-approved-100/60 p-4 ring-1 ring-approved-700/15">
-            <p className="text-xs font-medium tracking-wide text-approved-700 uppercase">
+          <div className="rounded-lg bg-ok-soft p-4 ring-1 ring-ok/20">
+            <p className="text-xs font-medium tracking-wide text-ok uppercase">
               Purchase order updated
             </p>
-            <p className="tnum mt-1 text-sm text-ink-900">
+            <p className="tnum mt-1 text-sm text-text">
               {run.ledger_effect.po_number}: invoiced to date ₹{run.ledger_effect.invoiced_before}
               {' → '}₹{run.ledger_effect.invoiced_after}
               {' · '}₹{run.ledger_effect.remaining_after} remaining
@@ -88,7 +88,7 @@ export default function DecisionCard({ run }) {
 
         {/* why */}
         <div>
-          <p className="mb-2 text-xs font-medium tracking-wide text-ink-500 uppercase">
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">
             Why this decision
           </p>
           <ul className="space-y-2">
@@ -97,18 +97,18 @@ export default function DecisionCard({ run }) {
                 key={index}
                 className={`rounded-lg p-3 ring-1 ${
                   finding.severity === 'INFO'
-                    ? 'bg-ink-50 ring-ink-300/60'
-                    : 'bg-white ring-ink-300'
+                    ? 'bg-surface-2 ring-border'
+                    : 'bg-surface ring-faint'
                 }`}
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <SeverityBadge severity={finding.severity} />
-                  <span className="font-medium text-ink-900">{finding.title}</span>
-                  <span className="font-mono text-[11px] text-ink-500">{finding.code}</span>
+                  <span className="font-medium text-text">{finding.title}</span>
+                  <span className="font-mono text-[11px] text-muted">{finding.code}</span>
                 </div>
-                <p className="mt-1.5 text-sm text-ink-700">{finding.message}</p>
+                <p className="mt-1.5 text-sm text-text-2">{finding.message}</p>
                 {finding.severity !== 'INFO' && finding.next_action && (
-                  <p className="mt-1.5 text-sm text-ink-500">
+                  <p className="mt-1.5 text-sm text-muted">
                     <span className="font-medium">Do this:</span> {finding.next_action}
                   </p>
                 )}
@@ -119,11 +119,11 @@ export default function DecisionCard({ run }) {
 
         {/* draft email */}
         {run.draft_email && (
-          <div className="rounded-lg ring-1 ring-ink-300/60">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-300/60 px-4 py-3">
+          <div className="rounded-lg ring-1 ring-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
               <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-ink-500" aria-hidden="true" />
-                <p className="font-medium text-ink-900">Draft email, ready to send</p>
+                <Mail className="h-4 w-4 text-muted" aria-hidden="true" />
+                <p className="font-medium text-text">Draft email, ready to send</p>
               </div>
               <CopyButton
                 label="Copy email"
@@ -131,9 +131,9 @@ export default function DecisionCard({ run }) {
               />
             </div>
             <div className="space-y-2 px-4 py-3 text-sm">
-              <p><span className="text-ink-500">To:</span> {run.draft_email.to}</p>
-              <p><span className="text-ink-500">Subject:</span> {run.draft_email.subject}</p>
-              <pre className="mt-2 overflow-x-auto font-sans whitespace-pre-wrap text-ink-700">
+              <p><span className="text-muted">To:</span> {run.draft_email.to}</p>
+              <p><span className="text-muted">Subject:</span> {run.draft_email.subject}</p>
+              <pre className="mt-2 overflow-x-auto font-sans whitespace-pre-wrap text-text-2">
                 {run.draft_email.body}
               </pre>
             </div>

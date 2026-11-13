@@ -55,8 +55,8 @@ export default function Reference() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Reference data</h1>
-          <p className="mt-1 text-ink-500">
+          <h1 className="text-[26px] leading-tight font-semibold text-text">Reference data</h1>
+          <p className="mt-1.5 text-[15px] text-text-2">
             The vendors, purchase orders and policy the decision engine checks against.
           </p>
         </div>
@@ -66,9 +66,9 @@ export default function Reference() {
             Reset demo data
           </Button>
         ) : (
-          <div className="flex items-center gap-2 rounded-lg bg-review-100 px-3 py-2">
-            <AlertTriangle className="h-4 w-4 shrink-0 text-review-700" aria-hidden="true" />
-            <span className="text-sm text-review-700">Delete all runs and reseed?</span>
+          <div className="flex items-center gap-2 rounded-lg bg-warn-soft px-3 py-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
+            <span className="text-sm text-warn">Delete all runs and reseed?</span>
             <Button variant="danger" onClick={reset} disabled={resetting}>
               {resetting ? 'Resetting…' : 'Yes, reset'}
             </Button>
@@ -80,15 +80,15 @@ export default function Reference() {
       {error && <ErrorNote message={error} onRetry={load} />}
 
       {usage && (
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-xl border border-ink-300/60 bg-white px-4 py-3 text-sm shadow-sm">
-          <span className="text-ink-500">AI usage, last 24h:</span>
-          <span className="tnum font-medium text-ink-900">{usage.calls} calls</span>
-          <span className="tnum text-ink-700">{usage.total_tokens.toLocaleString()} tokens</span>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-xl border border-border bg-surface px-4 py-3 text-sm shadow-card">
+          <span className="text-muted">AI usage, last 24h:</span>
+          <span className="tnum font-medium text-text">{usage.calls} calls</span>
+          <span className="tnum text-text-2">{usage.total_tokens.toLocaleString()} tokens</span>
           {usage.failed_calls > 0 && (
-            <span className="tnum text-review-700">{usage.failed_calls} failed</span>
+            <span className="tnum text-warn">{usage.failed_calls} failed</span>
           )}
-          <span className="text-ink-500">
-            {usage.model} <span className="text-ink-300">·</span> fallback {usage.fallback_model}
+          <span className="text-muted">
+            {usage.model} <span className="text-faint">·</span> fallback {usage.fallback_model}
           </span>
         </div>
       )}
@@ -99,7 +99,7 @@ export default function Reference() {
             key={item.key}
             onClick={() => setTab(item.key)}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-              tab === item.key ? 'bg-ink-900 text-white' : 'text-ink-700 hover:bg-ink-100'
+              tab === item.key ? 'bg-text text-surface' : 'text-text-2 hover:bg-border'
             }`}
           >
             {item.label}
@@ -141,7 +141,7 @@ export default function Reference() {
               `₹${po.amount_invoiced_display}`,
               <span
                 key={`${po.po_number}-rem`}
-                className={Number(po.remaining_balance) <= 0 ? 'text-ink-500' : 'font-medium text-ink-900'}
+                className={Number(po.remaining_balance) <= 0 ? 'text-muted' : 'font-medium text-text'}
               >
                 ₹{po.remaining_display}
               </span>,
@@ -177,14 +177,14 @@ export default function Reference() {
           <div className="space-y-5 p-5">
             {Object.entries(data.rules).map(([section, values]) => (
               <div key={section}>
-                <h3 className="mb-2 text-xs font-semibold tracking-wide text-ink-500 uppercase">
+                <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">
                   {section.replace(/_/g, ' ')}
                 </h3>
                 <dl className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
                   {Object.entries(values ?? {}).map(([key, value]) => (
-                    <div key={key} className="flex justify-between gap-4 border-b border-ink-100 py-1.5 text-sm">
-                      <dt className="text-ink-700">{key.replace(/_/g, ' ')}</dt>
-                      <dd className="tnum text-right font-medium text-ink-900">
+                    <div key={key} className="flex justify-between gap-4 border-b border-border py-1.5 text-sm">
+                      <dt className="text-text-2">{key.replace(/_/g, ' ')}</dt>
+                      <dd className="tnum text-right font-medium text-text">
                         {typeof value === 'object' && value !== null
                           ? JSON.stringify(value)
                           : String(value)}
@@ -220,14 +220,14 @@ export default function Reference() {
 
 function StatusChip({ status }) {
   const tones = {
-    approved: 'bg-approved-100 text-approved-700',
-    open: 'bg-approved-100 text-approved-700',
-    blocked: 'bg-rejected-100 text-rejected-700',
-    pending: 'bg-review-100 text-review-700',
-    closed: 'bg-ink-100 text-ink-700',
+    approved: 'bg-ok-soft text-ok',
+    open: 'bg-ok-soft text-ok',
+    blocked: 'bg-bad-soft text-bad',
+    pending: 'bg-warn-soft text-warn',
+    closed: 'bg-border text-text-2',
   }
   return (
-    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${tones[status] ?? 'bg-ink-100 text-ink-700'}`}>
+    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${tones[status] ?? 'bg-border text-text-2'}`}>
       {status}
     </span>
   )
@@ -237,18 +237,18 @@ function Table({ head, rows }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="border-b border-ink-300/60 bg-ink-50 text-left text-xs text-ink-500">
+        <thead className="border-b border-border bg-surface-2/60 text-left text-[11px] tracking-wide text-muted uppercase">
           <tr>
             {head.map((heading) => (
               <th key={heading} className="px-4 py-2.5 font-medium whitespace-nowrap">{heading}</th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-ink-100">
+        <tbody className="divide-y divide-border">
           {rows.map((row, index) => (
-            <tr key={index} className="hover:bg-ink-50/60">
+            <tr key={index} className="transition-colors hover:bg-surface-2">
               {row.map((cell, cellIndex) => (
-                <td key={cellIndex} className={`px-4 py-2.5 ${cellIndex > 2 ? 'tnum' : ''} text-ink-700`}>
+                <td key={cellIndex} className={`px-4 py-2.5 ${cellIndex > 2 ? 'tnum' : ''} text-text-2`}>
                   {cell}
                 </td>
               ))}

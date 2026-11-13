@@ -106,7 +106,7 @@ export default function RunView() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <BackLink />
         {run && !isRunning && (
-          <div className="flex items-center gap-3 text-sm text-ink-500">
+          <div className="flex items-center gap-3 text-sm text-muted">
             <span className="tnum">Completed in {formatDuration(run.duration_ms)}</span>
             <OutcomeChip outcome={run.outcome} />
           </div>
@@ -117,10 +117,10 @@ export default function RunView() {
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-4 px-5 py-4">
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold text-ink-900">
+            <h1 className="truncate text-lg font-semibold text-text">
               {run?.vendor_name ?? run?.filename ?? 'Processing…'}
             </h1>
-            <p className="tnum mt-1 text-sm text-ink-500">
+            <p className="tnum mt-1 text-sm text-muted">
               {run?.invoice_number ? `Invoice ${run.invoice_number}` : 'Reading the document…'}
               {run?.total_display && run.total_display !== '-' && ` · ₹${run.total_display}`}
               {run?.po_number && ` · ${run.po_number}`}
@@ -128,16 +128,16 @@ export default function RunView() {
             </p>
           </div>
           {isRunning && (
-            <div className="flex items-center gap-2 text-sm text-brand-700">
+            <div className="flex items-center gap-2 text-sm text-accent">
               <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
               <span className="tnum">{completedStages} of {steps.length || 10} stages</span>
             </div>
           )}
         </div>
         {isRunning && steps.length > 0 && (
-          <div className="h-1 w-full bg-ink-100" role="progressbar" aria-valuenow={completedStages} aria-valuemin={0} aria-valuemax={steps.length}>
+          <div className="h-1 w-full bg-border" role="progressbar" aria-valuenow={completedStages} aria-valuemin={0} aria-valuemax={steps.length}>
             <div
-              className="h-full bg-brand-600 transition-all duration-500"
+              className="h-full bg-accent transition-all duration-500"
               style={{ width: `${(completedStages / steps.length) * 100}%` }}
             />
           </div>
@@ -145,7 +145,7 @@ export default function RunView() {
       </Card>
 
       {stale && isRunning && (
-        <p className="rounded-lg bg-review-100 px-4 py-2.5 text-sm text-review-700">
+        <p className="rounded-lg bg-warn-soft px-4 py-2.5 text-sm text-warn">
           Live connection interrupted — reconnecting. The run keeps going on the server.
         </p>
       )}
@@ -175,7 +175,7 @@ export default function RunView() {
                   href={api.fileUrl(run.id)}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm font-medium text-brand-700 hover:underline"
+                  className="text-sm font-medium text-accent hover:underline"
                 >
                   Open
                 </a>
@@ -186,7 +186,7 @@ export default function RunView() {
                 <iframe
                   src={`${api.fileUrl(run.id)}#toolbar=0&view=FitH`}
                   title="Invoice PDF"
-                  className="h-[560px] w-full border-0 bg-ink-100"
+                  className="h-[560px] w-full border-0 bg-border"
                 />
               )
               : <Spinner label="Loading the document" />}
@@ -201,7 +201,7 @@ function BackLink() {
   return (
     <Link
       to="/dashboard"
-      className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-700 hover:text-brand-700"
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-text-2 hover:text-accent"
     >
       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
       All runs
@@ -222,8 +222,8 @@ function ExtractedFields({ run, steps }) {
     return (
       <Card>
         <CardHeader title="What was read from the invoice" />
-        <div className="px-5 py-8 text-center text-sm text-ink-500">
-          <FileText className="mx-auto mb-2 h-6 w-6 text-ink-300" aria-hidden="true" />
+        <div className="px-5 py-8 text-center text-sm text-muted">
+          <FileText className="mx-auto mb-2 h-6 w-6 text-faint" aria-hidden="true" />
           Reading the document…
         </div>
       </Card>
@@ -248,18 +248,18 @@ function ExtractedFields({ run, steps }) {
         title="What was read from the invoice"
         subtitle="Confidence combines the model's own score with our validation checks."
       />
-      <dl className="divide-y divide-ink-100">
+      <dl className="divide-y divide-border">
         {fields.map(([label, value, key]) => {
           const score = confidence[key]
           const low = score != null && score < 0.7
           return (
             <div
               key={key}
-              className={`flex items-center justify-between gap-3 px-5 py-2.5 ${low ? 'bg-review-100/50' : ''}`}
+              className={`flex items-center justify-between gap-3 px-5 py-2.5 ${low ? 'bg-warn-soft' : ''}`}
             >
-              <dt className="text-sm text-ink-500">{label}</dt>
+              <dt className="text-sm text-muted">{label}</dt>
               <dd className="flex items-center gap-2.5">
-                <span className={`tnum text-sm font-medium ${value ? 'text-ink-900' : 'text-ink-300 italic'}`}>
+                <span className={`tnum text-sm font-medium ${value ? 'text-text' : 'text-faint italic'}`}>
                   {value || 'not on document'}
                 </span>
                 {score != null && (

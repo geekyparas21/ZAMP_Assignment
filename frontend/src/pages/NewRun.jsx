@@ -4,7 +4,7 @@ import { FileText, Loader2, ScanLine, Upload } from 'lucide-react'
 
 import { api } from '../api'
 import {
-  Button, Card, CardHeader, ErrorNote, OutcomeChip, Spinner,
+  Button, Card, CardHeader, ErrorNote, OutcomeChip, SkeletonRows,
 } from '../components/ui'
 
 export default function NewRun() {
@@ -34,8 +34,8 @@ export default function NewRun() {
   function handleFile(file) {
     if (!file) return
     if (!file.name.toLowerCase().endsWith('.pdf')) {
-      // The pipeline rejects non-PDFs properly too, but telling the user here
-      // saves a round trip and a run that only exists to fail.
+      // The pipeline refuses non-PDFs properly too, but saying so here avoids
+      // a round trip and a run that exists only to fail.
       setError(`"${file.name}" is not a PDF. Upload the invoice as a PDF file.`)
       return
     }
@@ -43,123 +43,132 @@ export default function NewRun() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="rise">
+        <h1 className="text-[26px] leading-tight font-semibold text-text">
           Process an invoice
         </h1>
-        <p className="mt-1 max-w-2xl text-ink-500">
-          Drop a vendor invoice PDF below. It is read, checked against the approved
-          vendor list and open purchase orders, and given a decision you can explain —
-          every step visible as it happens.
+        <p className="mt-1.5 max-w-xl text-[15px] leading-relaxed text-text-2">
+          Drop a vendor invoice below. It gets read, checked against the approved
+          vendor list and open purchase orders, and given a decision you can
+          explain — with every step visible as it happens.
         </p>
       </div>
 
       {error && <ErrorNote message={error} />}
 
-      {/* -- upload ------------------------------------------------------ */}
-      <Card>
+      {/* -- upload ------------------------------------------------------- */}
+      <div
+        onDragOver={(event) => { event.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(event) => {
+          event.preventDefault()
+          setDragging(false)
+          handleFile(event.dataTransfer.files?.[0])
+        }}
+        className={`rise group relative overflow-hidden rounded-xl border border-dashed px-6 py-14 text-center transition-all duration-200 ${
+          dragging
+            ? 'scale-[1.005] border-accent bg-accent-soft'
+            : 'border-border-strong bg-surface hover:border-accent/50'
+        }`}
+      >
         <div
-          onDragOver={(event) => { event.preventDefault(); setDragging(true) }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(event) => {
-            event.preventDefault()
-            setDragging(false)
-            handleFile(event.dataTransfer.files?.[0])
-          }}
-          className={`m-3 rounded-lg border-2 border-dashed px-6 py-12 text-center transition-colors ${
-            dragging ? 'border-brand-600 bg-brand-50' : 'border-ink-300 bg-ink-50/50'
+          className={`mx-auto grid h-12 w-12 place-items-center rounded-xl transition-all duration-200 ${
+            dragging ? 'bg-accent text-on-accent' : 'bg-surface-2 text-muted'
           }`}
         >
-          <Upload className="mx-auto h-9 w-9 text-ink-500" aria-hidden="true" />
-          <p className="mt-3 font-medium text-ink-900">
-            Drag an invoice PDF here
-          </p>
-          <p className="mt-1 text-sm text-ink-500">
-            Text PDFs and scanned images both work — the system detects which and
-            reads it accordingly.
-          </p>
-          <div className="mt-4">
-            <Button
-              onClick={() => inputRef.current?.click()}
-              disabled={starting === 'upload'}
-            >
-              {starting === 'upload'
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting…</>
-                : 'Choose a file'}
-            </Button>
-          </div>
-          <input
-            ref={inputRef}
-            type="file"
-            accept="application/pdf,.pdf"
-            className="sr-only"
-            onChange={(event) => {
-              handleFile(event.target.files?.[0])
-              event.target.value = ''
-            }}
-          />
+          <Upload className="h-5 w-5" aria-hidden="true" />
         </div>
-      </Card>
+        <p className="mt-4 text-[15px] font-medium text-text">
+          {dragging ? 'Drop to start processing' : 'Drag an invoice PDF here'}
+        </p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted">
+          Text PDFs and scanned images both work — the system works out which it
+          is and reads it accordingly.
+        </p>
+        <div className="mt-5">
+          <Button onClick={() => inputRef.current?.click()} disabled={starting === 'upload'}>
+            {starting === 'upload'
+              ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting…</>
+              : 'Choose a file'}
+          </Button>
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="sr-only"
+          onChange={(event) => {
+            handleFile(event.target.files?.[0])
+            event.target.value = ''
+          }}
+        />
+      </div>
 
       {/* -- samples ------------------------------------------------------ */}
-      <Card>
+      <Card className="rise overflow-hidden">
         <CardHeader
-          title="Or try a sample invoice"
+          title="Or try a sample"
           subtitle="Realistic invoices from different vendors, each built to exercise a different part of the logic."
         />
-        {samples === null && <Spinner label="Loading samples" />}
+        {samples === null && <SkeletonRows rows={5} />}
         {samples && (
-          <ul className="divide-y divide-ink-300/60">
+          <ul className="divide-y divide-border">
             {samples.map((sample) => (
               <li key={sample.key}>
                 <button
                   onClick={() => begin(api.startSample(sample.key), sample.key)}
                   disabled={Boolean(starting)}
-                  className="flex w-full items-start gap-4 px-5 py-4 text-left transition-colors hover:bg-ink-50 disabled:opacity-60"
+                  className="group flex w-full items-center gap-3.5 px-5 py-3.5 text-left transition-colors duration-150 hover:bg-surface-2 disabled:opacity-50"
                 >
-                  <div className="mt-0.5 shrink-0">
+                  <span
+                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ring-1 transition-colors ${
+                      sample.kind === 'scanned'
+                        ? 'bg-warn-soft text-warn ring-warn/20'
+                        : 'bg-surface-2 text-muted ring-border group-hover:text-text-2'
+                    }`}
+                  >
                     {sample.kind === 'scanned'
-                      ? <ScanLine className="h-5 w-5 text-review-700" aria-label="Scanned" />
-                      : <FileText className="h-5 w-5 text-ink-500" aria-label="Text PDF" />}
-                  </div>
+                      ? <ScanLine className="h-4 w-4" aria-label="Scanned" />
+                      : <FileText className="h-4 w-4" aria-label="Text PDF" />}
+                  </span>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="font-medium text-ink-900">{sample.vendor}</span>
-                      <span className="tnum text-sm text-ink-500">
-                        {sample.invoice_number} · ₹{sample.total_display}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="text-sm font-medium text-text">{sample.vendor}</span>
+                      <span className="tnum font-mono text-[11px] text-muted">
+                        {sample.invoice_number}
                       </span>
-                      {sample.kind === 'scanned' && (
-                        <span className="rounded bg-review-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-review-700">
-                          SCANNED
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-sm text-ink-500">{sample.scenario}</p>
-                  </div>
+                      <span className="tnum text-[13px] text-text-2">
+                        ₹{sample.total_display}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block text-[13px] leading-snug text-muted">
+                      {sample.scenario}
+                    </span>
+                  </span>
 
-                  <div className="hidden shrink-0 sm:block">
+                  <span className="hidden shrink-0 sm:block">
                     {starting === sample.key
-                      ? <Loader2 className="h-5 w-5 animate-spin text-brand-600" />
+                      ? <Loader2 className="h-4 w-4 animate-spin text-accent" />
                       : <OutcomeChip outcome={sample.expected_outcome} size="sm" />}
-                  </div>
+                  </span>
                 </button>
               </li>
             ))}
           </ul>
         )}
         {samples?.length === 0 && (
-          <p className="px-5 py-8 text-center text-sm text-ink-500">
+          <p className="px-5 py-10 text-center text-sm text-muted">
             No samples found on the server.
           </p>
         )}
       </Card>
 
-      <p className="text-xs text-ink-500">
-        The chip on the right is the outcome each sample is designed to produce. It is
-        a label for you, not an instruction to the pipeline — no logic anywhere reads
-        the filename or the expected result.
+      <p className="px-1 text-[12px] leading-relaxed text-muted">
+        The chip on the right is the outcome each sample is designed to produce.
+        It is a label for you, not an instruction to the pipeline — no logic
+        anywhere reads a filename or an expected result.
       </p>
     </div>
   )

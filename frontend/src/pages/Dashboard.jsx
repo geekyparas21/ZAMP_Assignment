@@ -58,8 +58,8 @@ export default function Dashboard() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Dashboard</h1>
-          <p className="mt-1 text-ink-500">Every invoice processed, and what was decided.</p>
+          <h1 className="text-[26px] leading-tight font-semibold text-text">Dashboard</h1>
+          <p className="mt-1.5 text-[15px] text-text-2">Every invoice processed, and what was decided.</p>
         </div>
         <Button variant="secondary" onClick={load} disabled={refreshing}>
           <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
@@ -88,7 +88,7 @@ export default function Dashboard() {
 
       {/* filters */}
       <Card>
-        <div className="flex flex-wrap items-center gap-3 border-b border-ink-300/60 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
           <div className="flex flex-wrap gap-1">
             {FILTERS.map((filter) => (
               <button
@@ -96,8 +96,8 @@ export default function Dashboard() {
                 onClick={() => setOutcome(filter.value)}
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                   outcome === filter.value
-                    ? 'bg-ink-900 text-white'
-                    : 'text-ink-700 hover:bg-ink-100'
+                    ? 'bg-text text-surface'
+                    : 'text-text-2 hover:bg-border'
                 }`}
               >
                 {filter.label}
@@ -106,14 +106,14 @@ export default function Dashboard() {
           </div>
 
           <div className="relative ml-auto">
-            <Search className="pointer-events-none absolute top-2.5 left-3 h-4 w-4 text-ink-500" aria-hidden="true" />
+            <Search className="pointer-events-none absolute top-2.5 left-3 h-4 w-4 text-muted" aria-hidden="true" />
             <input
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search vendor, invoice no. or PO"
               aria-label="Search runs"
-              className="w-full rounded-lg py-2 pr-3 pl-9 text-sm ring-1 ring-ink-300 outline-none placeholder:text-ink-500 focus:ring-2 focus:ring-brand-600 sm:w-72"
+              className="w-full rounded-lg py-2 pr-3 pl-9 text-sm ring-1 ring-faint outline-none placeholder:text-muted focus:ring-2 focus:ring-accent sm:w-72"
             />
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function Dashboard() {
         {runs?.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-ink-300/60 bg-ink-50 text-left text-xs text-ink-500">
+              <thead className="border-b border-border bg-surface-2/60 text-left text-[11px] tracking-wide text-muted uppercase">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">When</th>
                   <th className="px-4 py-2.5 font-medium">Vendor</th>
@@ -152,35 +152,35 @@ export default function Dashboard() {
                   <th className="px-4 py-2.5 text-right font-medium">Took</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ink-100">
+              <tbody className="divide-y divide-border">
                 {runs.map((run) => (
                   <tr
                     key={run.id}
                     onClick={() => navigate(`/runs/${run.id}`)}
-                    className="cursor-pointer transition-colors hover:bg-brand-50/60"
+                    className="cursor-pointer transition-colors duration-150 hover:bg-surface-2"
                   >
-                    <td className="tnum px-4 py-2.5 whitespace-nowrap text-ink-500">
+                    <td className="tnum px-4 py-2.5 whitespace-nowrap text-muted">
                       {formatTimestamp(run.created_at)}
                     </td>
-                    <td className="max-w-[220px] truncate px-4 py-2.5 font-medium text-ink-900">
+                    <td className="max-w-[220px] truncate px-4 py-2.5 font-medium text-text">
                       {run.vendor_name ?? run.filename ?? '—'}
                     </td>
-                    <td className="tnum px-4 py-2.5 text-ink-700">{run.invoice_number ?? '—'}</td>
-                    <td className="tnum px-4 py-2.5 text-right text-ink-900">
+                    <td className="tnum px-4 py-2.5 text-text-2">{run.invoice_number ?? '—'}</td>
+                    <td className="tnum px-4 py-2.5 text-right text-text">
                       {run.total_display && run.total_display !== '-' ? `₹${run.total_display}` : '—'}
                     </td>
-                    <td className="tnum px-4 py-2.5 text-ink-700">{run.po_number ?? '—'}</td>
+                    <td className="tnum px-4 py-2.5 text-text-2">{run.po_number ?? '—'}</td>
                     <td className="px-4 py-2.5">
                       {run.status === 'running'
-                        ? <span className="text-xs text-brand-700">running…</span>
+                        ? <span className="text-xs text-accent">running…</span>
                         : <OutcomeChip outcome={run.outcome} size="sm" />}
                     </td>
                     <td className="max-w-[230px] truncate px-4 py-2.5">
-                      <span className="font-mono text-[11px] text-ink-500">
+                      <span className="font-mono text-[11px] text-muted">
                         {run.top_reason ?? '—'}
                       </span>
                     </td>
-                    <td className="tnum px-4 py-2.5 text-right text-ink-500">
+                    <td className="tnum px-4 py-2.5 text-right text-muted">
                       {formatDuration(run.duration_ms)}
                     </td>
                   </tr>
@@ -197,12 +197,14 @@ export default function Dashboard() {
 function Kpi({ label, value, tone, hint }) {
   const style = tone ? outcomeStyle(tone) : null
   return (
-    <div className="rounded-xl border border-ink-300/60 bg-white px-4 py-3 shadow-sm">
-      <p className="text-xs text-ink-500">{label}</p>
-      <p className={`tnum mt-1 text-2xl font-semibold ${style ? style.text : 'text-ink-900'}`}>
+    <div className="rise rounded-xl border border-border bg-surface px-4 py-3.5 shadow-card transition-colors hover:border-border-strong">
+      <p className="text-[11px] font-medium tracking-[0.06em] text-muted uppercase">
+        {label}
+      </p>
+      <p className={`tnum mt-1.5 text-[26px] leading-none font-semibold tracking-tight ${style ? style.text : 'text-text'}`}>
         {value}
       </p>
-      {hint && <p className="tnum mt-0.5 text-xs text-ink-500">{hint}</p>}
+      {hint && <p className="tnum mt-1.5 text-[11px] text-muted">{hint}</p>}
     </div>
   )
 }
