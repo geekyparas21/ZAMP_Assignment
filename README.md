@@ -103,7 +103,18 @@ curl https://<your-service>.onrender.com/health
 ```
 
 Expect `"status":"ok"`, `"database":"ok"` and `"database_kind":"postgres"`.
-Reference data seeds itself on the first boot.
+If that last field says `sqlite`, `DATABASE_URL` never reached the app and run
+history would be lost on the next redeploy. Reference data seeds itself on the
+first boot.
+
+Then run every scenario against the deployed service:
+
+```bash
+python scripts/smoke_live.py --base-url https://<your-service>.onrender.com --reset
+```
+
+It wakes the host, checks the database, runs all 14 sample invoices and exits
+non-zero if any one of them does not produce its expected outcome.
 
 To restore a known state before a demo:
 
