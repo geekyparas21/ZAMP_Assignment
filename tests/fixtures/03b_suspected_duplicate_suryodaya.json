@@ -1,0 +1,51 @@
+{
+  "model": "gemini-3.5-flash",
+  "attempts": 1,
+  "input_kind": "text",
+  "tokens": {
+    "prompt": 780,
+    "response": 330,
+    "total": 2684
+  },
+  "warnings": [],
+  "response": {
+    "is_invoice": true,
+    "document_type": "invoice",
+    "vendor_name": "SURYODAYA ENGG WORKS",
+    "vendor_gstin": "08AAKCS8901N1ZP",
+    "vendor_address": "E-7 Sitapura Industrial Area, Jaipur 302022",
+    "invoice_number": "SEW-2026-131",
+    "invoice_date": "2026-11-12",
+    "due_date": "2026-12-27",
+    "po_reference": "PO-4550",
+    "currency": "INR",
+    "line_items": [
+      {
+        "description": "Fabricated bracket assembly type-7",
+        "hsn": "7308",
+        "qty": "150",
+        "unit": "NOS",
+        "unit_price": "483.80",
+        "amount": "72570.00"
+      }
+    ],
+    "subtotal": "61500.00",
+    "tax_total": "11070.00",
+    "tax_rate_pct": "18",
+    "total": "72570.00",
+    "tax_inclusive": true,
+    "bank_account_last4": "4470",
+    "notes": null,
+    "field_confidence": {
+      "vendor_name": 0.99,
+      "vendor_gstin": 0.99,
+      "invoice_number": 0.99,
+      "invoice_date": 0.99,
+      "due_date": 0.99,
+      "po_reference": 0.99,
+      "subtotal": 0.99,
+      "tax_total": 0.99,
+      "total": 0.99
+    }
+  }
+}

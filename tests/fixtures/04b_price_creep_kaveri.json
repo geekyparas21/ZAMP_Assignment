@@ -1,0 +1,51 @@
+{
+  "model": "gemini-3.5-flash",
+  "attempts": 1,
+  "input_kind": "text",
+  "tokens": {
+    "prompt": 781,
+    "response": 334,
+    "total": 2017
+  },
+  "warnings": [],
+  "response": {
+    "is_invoice": true,
+    "document_type": "invoice",
+    "vendor_name": "Kaveri Logistics Services",
+    "vendor_gstin": "33AADCK9012F1ZW",
+    "vendor_address": "18 Anna Salai, Guindy | Chennai 600032",
+    "invoice_number": "KLS-2026-0588",
+    "invoice_date": "2026-11-10",
+    "due_date": "2026-11-25",
+    "po_reference": "PO-4531",
+    "currency": "INR",
+    "line_items": [
+      {
+        "description": "Road freight Pune to Chennai, per trip",
+        "hsn": "9965",
+        "qty": "20",
+        "unit": "TRIP",
+        "unit_price": "9180.00",
+        "amount": "183600.00"
+      }
+    ],
+    "subtotal": "183600.00",
+    "tax_total": "33048.00",
+    "tax_rate_pct": "18",
+    "total": "216648.00",
+    "tax_inclusive": false,
+    "bank_account_last4": "2290",
+    "notes": null,
+    "field_confidence": {
+      "vendor_name": 0.99,
+      "vendor_gstin": 0.99,
+      "invoice_number": 0.99,
+      "invoice_date": 0.99,
+      "due_date": 0.99,
+      "po_reference": 0.99,
+      "subtotal": 0.99,
+      "tax_total": 0.99,
+      "total": 0.99
+    }
+  }
+}

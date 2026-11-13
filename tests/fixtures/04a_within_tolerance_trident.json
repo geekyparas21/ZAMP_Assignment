@@ -1,0 +1,59 @@
+{
+  "model": "gemini-3.5-flash",
+  "attempts": 1,
+  "input_kind": "text",
+  "tokens": {
+    "prompt": 800,
+    "response": 369,
+    "total": 2858
+  },
+  "warnings": [],
+  "response": {
+    "is_invoice": true,
+    "document_type": "invoice",
+    "vendor_name": "Trident Fasteners & Hardware",
+    "vendor_gstin": "23AAJCT4567M1ZT",
+    "vendor_address": "44 Industrial Estate, Govindpura, Bhopal 462023",
+    "invoice_number": "TFH-2026-2288",
+    "invoice_date": "2026-11-09",
+    "due_date": "2026-12-09",
+    "po_reference": "PO-4530",
+    "currency": "INR",
+    "line_items": [
+      {
+        "description": "Hex bolt M12x50 Gr.8.8 zinc plated",
+        "hsn": "7318",
+        "qty": "10000",
+        "unit": "NOS",
+        "unit_price": "11.50",
+        "amount": "115000.00"
+      },
+      {
+        "description": "Freight & handling charges",
+        "hsn": null,
+        "qty": null,
+        "unit": null,
+        "unit_price": null,
+        "amount": "152.54"
+      }
+    ],
+    "subtotal": "115152.54",
+    "tax_total": "20727.46",
+    "tax_rate_pct": "18",
+    "total": "135880.00",
+    "tax_inclusive": false,
+    "bank_account_last4": "8809",
+    "notes": null,
+    "field_confidence": {
+      "vendor_name": 1.0,
+      "vendor_gstin": 1.0,
+      "invoice_number": 1.0,
+      "invoice_date": 1.0,
+      "due_date": 1.0,
+      "po_reference": 1.0,
+      "subtotal": 1.0,
+      "tax_total": 1.0,
+      "total": 1.0
+    }
+  }
+}

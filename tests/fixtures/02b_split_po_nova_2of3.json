@@ -1,0 +1,51 @@
+{
+  "model": "gemini-3.5-flash",
+  "attempts": 1,
+  "input_kind": "text",
+  "tokens": {
+    "prompt": 780,
+    "response": 473,
+    "total": 2220
+  },
+  "warnings": [],
+  "response": {
+    "is_invoice": true,
+    "document_type": "invoice",
+    "vendor_name": "Nova Polymers Pvt Ltd",
+    "vendor_gstin": "29AACCN5678E1Z5",
+    "vendor_address": "Survey 88/2, Jigani Industrial Area | Bengaluru 560105",
+    "invoice_number": "NPL-2026-0736",
+    "invoice_date": "2026-11-08",
+    "due_date": "2026-12-23",
+    "po_reference": "PO-4510",
+    "currency": "INR",
+    "line_items": [
+      {
+        "description": "Polypropylene granules PP-H110",
+        "hsn": "3902",
+        "qty": "2000",
+        "unit": "KG",
+        "unit_price": "85.00",
+        "amount": "170000.00"
+      }
+    ],
+    "subtotal": "170000.00",
+    "tax_total": "30600.00",
+    "tax_rate_pct": "18",
+    "total": "200600.00",
+    "tax_inclusive": false,
+    "bank_account_last4": "7781",
+    "notes": null,
+    "field_confidence": {
+      "vendor_name": 1.0,
+      "vendor_gstin": 1.0,
+      "invoice_number": 1.0,
+      "invoice_date": 1.0,
+      "due_date": 1.0,
+      "po_reference": 1.0,
+      "subtotal": 1.0,
+      "tax_total": 1.0,
+      "total": 1.0
+    }
+  }
+}

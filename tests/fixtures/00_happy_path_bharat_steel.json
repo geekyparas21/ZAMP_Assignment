@@ -1,0 +1,59 @@
+{
+  "model": "gemini-3.5-flash",
+  "attempts": 1,
+  "input_kind": "text",
+  "tokens": {
+    "prompt": 825,
+    "response": 393,
+    "total": 3081
+  },
+  "warnings": [],
+  "response": {
+    "is_invoice": true,
+    "document_type": "invoice",
+    "vendor_name": "Bharat Steel Ind.",
+    "vendor_gstin": "27AABCB1234D1ZC",
+    "vendor_address": "Gat No. 221, Kurkumbh MIDC, Daund, Pune 413802",
+    "invoice_number": "BSI-2026-1042",
+    "invoice_date": "2026-11-04",
+    "due_date": "2026-12-04",
+    "po_reference": "PO-4501",
+    "currency": "INR",
+    "line_items": [
+      {
+        "description": "MS Plate 10mm IS2062 Gr.B",
+        "hsn": "7208",
+        "qty": "120",
+        "unit": "NOS",
+        "unit_price": "485.00",
+        "amount": "58200.00"
+      },
+      {
+        "description": "MS Angle 50x50x5mm",
+        "hsn": "7216",
+        "qty": "200",
+        "unit": "NOS",
+        "unit_price": "162.50",
+        "amount": "32500.00"
+      }
+    ],
+    "subtotal": "90700.00",
+    "tax_total": "16326.00",
+    "tax_rate_pct": "18",
+    "total": "107026.00",
+    "tax_inclusive": false,
+    "bank_account_last4": "4412",
+    "notes": null,
+    "field_confidence": {
+      "vendor_name": 1.0,
+      "vendor_gstin": 1.0,
+      "invoice_number": 1.0,
+      "invoice_date": 1.0,
+      "due_date": 1.0,
+      "po_reference": 1.0,
+      "subtotal": 1.0,
+      "tax_total": 1.0,
+      "total": 1.0
+    }
+  }
+}

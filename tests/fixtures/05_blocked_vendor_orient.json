@@ -1,0 +1,51 @@
+{
+  "model": "gemini-3.5-flash",
+  "attempts": 1,
+  "input_kind": "text",
+  "tokens": {
+    "prompt": 781,
+    "response": 337,
+    "total": 2642
+  },
+  "warnings": [],
+  "response": {
+    "is_invoice": true,
+    "document_type": "invoice",
+    "vendor_name": "Orient Electricals Ltd",
+    "vendor_gstin": "07AAGCO2345J1ZD",
+    "vendor_address": "221 Okhla Phase III, New Delhi 110020",
+    "invoice_number": "OEL-2026-0901",
+    "invoice_date": "2026-11-06",
+    "due_date": "2026-12-06",
+    "po_reference": "PO-4570",
+    "currency": "INR",
+    "line_items": [
+      {
+        "description": "4-core armoured cable 25sqmm",
+        "hsn": "8544",
+        "qty": "800",
+        "unit": "MTR",
+        "unit_price": "412.00",
+        "amount": "329600.00"
+      }
+    ],
+    "subtotal": "329600.00",
+    "tax_total": "59328.00",
+    "tax_rate_pct": "18",
+    "total": "388928.00",
+    "tax_inclusive": false,
+    "bank_account_last4": "1187",
+    "notes": null,
+    "field_confidence": {
+      "vendor_name": 0.99,
+      "vendor_gstin": 0.99,
+      "invoice_number": 0.99,
+      "invoice_date": 0.99,
+      "due_date": 0.99,
+      "po_reference": 0.99,
+      "subtotal": 0.99,
+      "tax_total": 0.99,
+      "total": 0.99
+    }
+  }
+}

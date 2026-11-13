@@ -1,0 +1,51 @@
+{
+  "model": "gemini-3.5-flash",
+  "attempts": 2,
+  "input_kind": "text",
+  "tokens": {
+    "prompt": 788,
+    "response": 339,
+    "total": 2258
+  },
+  "warnings": [],
+  "response": {
+    "is_invoice": true,
+    "document_type": "invoice",
+    "vendor_name": "Sunrise Packaging Co.",
+    "vendor_gstin": "24AAFCS7890H1ZZ",
+    "vendor_address": "C-14, GIDC Vatva | Ahmedabad 382445",
+    "invoice_number": "SPC-2026-0417",
+    "invoice_date": "2026-11-07",
+    "due_date": "2026-12-07",
+    "po_reference": null,
+    "currency": "INR",
+    "line_items": [
+      {
+        "description": "Corrugated box 5-ply 600x400x300mm",
+        "hsn": "4819",
+        "qty": "3020",
+        "unit": "NOS",
+        "unit_price": "46.00",
+        "amount": "138920.00"
+      }
+    ],
+    "subtotal": "138920.00",
+    "tax_total": "25005.60",
+    "tax_rate_pct": "18",
+    "total": "163925.60",
+    "tax_inclusive": false,
+    "bank_account_last4": "9021",
+    "notes": null,
+    "field_confidence": {
+      "vendor_name": 0.99,
+      "vendor_gstin": 0.99,
+      "invoice_number": 0.99,
+      "invoice_date": 0.99,
+      "due_date": 0.99,
+      "po_reference": 0.99,
+      "subtotal": 0.99,
+      "tax_total": 0.99,
+      "total": 0.99
+    }
+  }
+}

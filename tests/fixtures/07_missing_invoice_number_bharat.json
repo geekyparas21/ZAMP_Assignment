@@ -1,0 +1,51 @@
+{
+  "model": "gemini-3.5-flash",
+  "attempts": 1,
+  "input_kind": "text",
+  "tokens": {
+    "prompt": 762,
+    "response": 331,
+    "total": 2157
+  },
+  "warnings": [],
+  "response": {
+    "is_invoice": true,
+    "document_type": "invoice",
+    "vendor_name": "Bharat Steel Ind.",
+    "vendor_gstin": "27AABCB1234D1ZC",
+    "vendor_address": "Gat No. 221, Kurkumbh MIDC, Daund, Pune 413802",
+    "invoice_number": null,
+    "invoice_date": "2026-11-07",
+    "due_date": "2026-12-07",
+    "po_reference": "PO-4590",
+    "currency": "INR",
+    "line_items": [
+      {
+        "description": "MS Round bar 20mm",
+        "hsn": "7214",
+        "qty": "500",
+        "unit": "NOS",
+        "unit_price": "92.00",
+        "amount": "46000.00"
+      }
+    ],
+    "subtotal": "46000.00",
+    "tax_total": "8280.00",
+    "tax_rate_pct": "18",
+    "total": "54280.00",
+    "tax_inclusive": false,
+    "bank_account_last4": "4412",
+    "notes": "Invoice number field is empty on the document.",
+    "field_confidence": {
+      "vendor_name": 0.99,
+      "vendor_gstin": 0.99,
+      "invoice_number": null,
+      "invoice_date": 0.99,
+      "due_date": 0.99,
+      "po_reference": 0.99,
+      "subtotal": 0.99,
+      "tax_total": 0.99,
+      "total": 0.99
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "model": "gemini-3.5-flash",
+  "attempts": 1,
+  "input_kind": "page_images",
+  "tokens": {
+    "prompt": 1574,
+    "response": 402,
+    "total": 3059
+  },
+  "warnings": [],
+  "response": {
+    "is_invoice": true,
+    "document_type": "invoice",
+    "vendor_name": "DECCAN PRECISION TOOLS PVT. LTD.",
+    "vendor_gstin": "36AAECD3456G1ZQ",
+    "vendor_address": "Plot 9, Balanagar Industrial Estate, Hyderabad 500037",
+    "invoice_number": "DPT/2026/0247",
+    "invoice_date": "2026-11-05",
+    "due_date": "2026-12-05",
+    "po_reference": null,
+    "currency": "INR",
+    "line_items": [
+      {
+        "description": "Carbide turning insert CNMG120408",
+        "hsn": "8209",
+        "qty": "500",
+        "unit": "PCS",
+        "unit_price": "212.00",
+        "amount": "106000.00"
+      },
+      {
+        "description": "Tool holder PCLNR2525M12",
+        "hsn": "8466",
+        "qty": "10",
+        "unit": "NOS",
+        "unit_price": "3450.00",
+        "amount": "34500.00"
+      }
+    ],
+    "subtotal": "140500.00",
+    "tax_total": "25290.00",
+    "tax_rate_pct": "18",
+    "total": "165790.00",
+    "tax_inclusive": false,
+    "bank_account_last4": "5533",
+    "notes": "Delivered against verbal confirmation from Stores.",
+    "field_confidence": {
+      "vendor_name": 0.98,
+      "vendor_gstin": 0.98,
+      "invoice_number": 0.98,
+      "invoice_date": 0.98,
+      "due_date": 0.98,
+      "po_reference": 0.98,
+      "subtotal": 0.98,
+      "tax_total": 0.98,
+      "total": 0.98
+    }
+  }
+}

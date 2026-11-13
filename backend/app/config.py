@@ -96,21 +96,30 @@ def reload_rules() -> Rules:
     return get_rules()
 
 
+def _env(name: str, default: str = "") -> str:
+    """Read an environment variable, tolerating a value wrapped in quotes.
+
+    Pasting a key into a .env file with the quotes still around it is an easy
+    mistake to make and produces a baffling 401 rather than a clear error.
+    """
+    return os.environ.get(name, default).strip().strip('"').strip("'")
+
+
 class Settings:
     """Environment-driven settings. Secrets are never defaulted to a value."""
 
     def __init__(self) -> None:
-        self.gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
-        self.gemini_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        self.gemini_api_key = _env("GEMINI_API_KEY")
+        self.gemini_model = _env("GEMINI_MODEL", "gemini-3.5-flash")
         self.gemini_fallback_model = os.environ.get(
-            "GEMINI_FALLBACK_MODEL", "gemini-2.5-flash-lite")
+            "GEMINI_FALLBACK_MODEL", "gemini-3.5-flash-lite")
         self.gemini_timeout = int(os.environ.get("GEMINI_TIMEOUT_SECONDS", "60"))
         self.gemini_max_retries = int(os.environ.get("GEMINI_MAX_RETRIES", "3"))
         self.database_url = os.environ.get(
             "DATABASE_URL", f"sqlite:///{ROOT / 'invoice_pipeline.db'}")
-        self.app_env = os.environ.get("APP_ENV", "local")
+        self.app_env = _env("APP_ENV", "local")
         self.auto_seed = os.environ.get("AUTO_SEED_ON_BOOT", "true").lower() == "true"
-        self.log_level = os.environ.get("LOG_LEVEL", "INFO")
+        self.log_level = _env("LOG_LEVEL", "INFO")
 
     @property
     def llm_configured(self) -> bool:

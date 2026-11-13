@@ -1,0 +1,51 @@
+{
+  "model": "gemini-3.5-flash",
+  "attempts": 1,
+  "input_kind": "text",
+  "tokens": {
+    "prompt": 766,
+    "response": 463,
+    "total": 1843
+  },
+  "warnings": [],
+  "response": {
+    "is_invoice": true,
+    "document_type": "invoice",
+    "vendor_name": "Vega Instruments Pvt Ltd",
+    "vendor_gstin": "19AAICV0123L1Z7",
+    "vendor_address": "7 Salt Lake Sector V, Kolkata 700091",
+    "invoice_number": "INV/2026/42",
+    "invoice_date": "2026-10-15",
+    "due_date": "2026-11-14",
+    "po_reference": "PO-4540",
+    "currency": "INR",
+    "line_items": [
+      {
+        "description": "Digital pressure gauge 0-100 bar",
+        "hsn": "9026",
+        "qty": "40",
+        "unit": "NOS",
+        "unit_price": "2000.00",
+        "amount": "80000.00"
+      }
+    ],
+    "subtotal": "80000.00",
+    "tax_total": "14400.00",
+    "tax_rate_pct": "18",
+    "total": "94400.00",
+    "tax_inclusive": false,
+    "bank_account_last4": "6655",
+    "notes": null,
+    "field_confidence": {
+      "vendor_name": 1.0,
+      "vendor_gstin": 1.0,
+      "invoice_number": 1.0,
+      "invoice_date": 1.0,
+      "due_date": 1.0,
+      "po_reference": 1.0,
+      "subtotal": 1.0,
+      "tax_total": 1.0,
+      "total": 1.0
+    }
+  }
+}

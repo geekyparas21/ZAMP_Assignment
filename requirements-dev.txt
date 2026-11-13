@@ -1,6 +1,9 @@
+google-genai==3.3.0
 pdfplumber==0.11.10
 pillow==13.0.0
+pydantic==2.14.3
 pymupdf==2.1
 pytest==9.2.0
+python-dotenv==1.2.4
 PyYAML==6.0.3
 reportlab==5.1.0
