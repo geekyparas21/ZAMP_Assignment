@@ -269,5 +269,23 @@
       "VENDOR_UNKNOWN",
       "NO_PO_FOUND"
     ]
+  },
+  {
+    "file": "10_phone_photo_vega.jpg",
+    "kind": "image",
+    "template": "A",
+    "vendor": "Vega Instruments Pvt Ltd",
+    "number": "VI-2026-0533",
+    "po": "PO-4580",
+    "total": "1,30,980.00",
+    "total_raw": "130980.00",
+    "chars": 0,
+    "pages": 1,
+    "size_kb": 191.5,
+    "scenario": "Phone photo of an invoice (JPG, on a desk, at an angle) \u2014 matches PO-4580 exactly and must still approve.",
+    "expected_outcome": "APPROVED",
+    "expected_reasons": [
+      "IMAGE_UPLOAD"
+    ]
   }
 ]

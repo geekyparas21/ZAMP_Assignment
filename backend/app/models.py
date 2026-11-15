@@ -110,6 +110,9 @@ class Run(SQLModel, table=True):
     size_bytes: int = 0
     page_count: int = 0
     is_scanned: bool = False
+    #: pdf_text | pdf_scanned | image - what the dashboard badge shows, and
+    #: which of the two extraction paths the document took.
+    file_kind: str = Field(default="pdf_text")
 
     #: running | completed | failed
     status: str = Field(default="running", index=True)
@@ -162,7 +165,12 @@ class RunStep(SQLModel, table=True):
 
 
 class StoredFile(SQLModel, table=True):
-    """The uploaded PDF itself, kept in the database rather than on disk."""
+    """The uploaded file itself, kept in the database rather than on disk.
+
+    PDFs and images alike, as the original bytes: the preview panel serves
+    them back with content_type, and the stored bytes are what a re-run
+    re-reads.
+    """
 
     __tablename__ = "stored_files"
 

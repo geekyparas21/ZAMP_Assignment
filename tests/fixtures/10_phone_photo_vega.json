@@ -1,0 +1,53 @@
+{
+  "model": "gemini-3.5-flash",
+  "attempts": 1,
+  "input_kind": "image",
+  "tokens": {
+    "prompt": 1644,
+    "response": 363,
+    "total": 2793
+  },
+  "warnings": [],
+  "response": {
+    "is_invoice": true,
+    "document_type": "invoice",
+    "vendor_name": "Vega Instruments Pvt Ltd",
+    "vendor_gstin": "19AAICV0123L1Z7",
+    "vendor_address": "7 Salt Lake Sector V\nKolkata 700091",
+    "bill_to_name": "Acme Manufacturing Pvt Ltd",
+    "bill_to_gstin": "27AAACA1111A1ZS",
+    "invoice_number": "VI-2026-0533",
+    "invoice_date": "2026-11-13",
+    "due_date": "2026-12-13",
+    "po_reference": "PO-4580",
+    "currency": "INR",
+    "line_items": [
+      {
+        "description": "Electromagnetic flow meter DN50",
+        "hsn": "9026",
+        "qty": "6",
+        "unit": "NOS",
+        "unit_price": "18500.00",
+        "amount": "111000.00"
+      }
+    ],
+    "subtotal": "111000.00",
+    "tax_total": "19980.00",
+    "tax_rate_pct": "18",
+    "total": "130980.00",
+    "tax_inclusive": false,
+    "bank_account_last4": "6655",
+    "notes": null,
+    "field_confidence": {
+      "vendor_name": 0.99,
+      "vendor_gstin": 0.99,
+      "invoice_number": 0.99,
+      "invoice_date": 0.99,
+      "due_date": 0.99,
+      "po_reference": 0.99,
+      "subtotal": 0.99,
+      "tax_total": 0.99,
+      "total": 0.99
+    }
+  }
+}

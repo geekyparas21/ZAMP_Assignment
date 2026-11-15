@@ -1,5 +1,6 @@
 import {
-  AlertTriangle, CheckCircle2, Circle, Clock, Loader2, MinusCircle, XCircle,
+  AlertTriangle, CheckCircle2, Circle, Clock, FileText, Image as ImageIcon,
+  Loader2, MinusCircle, ScanLine, XCircle,
 } from 'lucide-react'
 
 // --- outcomes --------------------------------------------------------------
@@ -77,6 +78,36 @@ export function StageIcon({ status, className = 'h-[18px] w-[18px]' }) {
       className={`${className} ${config.colour} ${config.spin ? 'animate-spin' : ''}`}
       aria-label={config.label}
     />
+  )
+}
+
+// --- what kind of file it was ----------------------------------------------
+// An invoice arrives as a text PDF, a scan, or a photo. Which one it was
+// explains the confidence and the time a run took, so it is shown wherever a
+// run is listed rather than buried in the stage detail.
+export const FILE_KINDS = {
+  pdf_text: { label: 'PDF', Icon: FileText, title: 'Text PDF — read from its text layer' },
+  pdf_scanned: { label: 'Scanned PDF', Icon: ScanLine, title: 'Scanned PDF — no text layer, read as page images' },
+  image: { label: 'Image', Icon: ImageIcon, title: 'Image upload — photo or screenshot, read by the vision model' },
+}
+
+export function fileKindOf(run) {
+  if (!run) return null
+  return run.file_kind ?? (run.is_scanned ? 'pdf_scanned' : 'pdf_text')
+}
+
+export function FileKindBadge({ kind, className = '' }) {
+  const config = FILE_KINDS[kind]
+  if (!config) return null
+  const { Icon } = config
+  return (
+    <span
+      title={config.title}
+      className={`inline-flex items-center gap-1 rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-text-2 ring-1 ring-inset ring-border ${className}`}
+    >
+      <Icon className="h-3 w-3" aria-hidden="true" />
+      {config.label}
+    </span>
   )
 }
 

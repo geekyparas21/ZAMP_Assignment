@@ -10,11 +10,13 @@ Built for the Zamp AI Solutions Analyst case study (**PS-1 · Finance / AP**).
 
 ## What it does
 
-A mid-size manufacturer receives hundreds of vendor invoices a month as PDFs. An AP clerk opens
+A mid-size manufacturer receives hundreds of vendor invoices a month — PDFs from some
+suppliers, phone photos and screenshots from others. An AP clerk opens
 each one, hunts for the matching purchase order, checks whether the numbers line up, and decides
 what to do. This system does that end-to-end, in about ten seconds, and shows its working.
 
-Upload an invoice PDF (clean text or a scanned image) and the pipeline runs ten visible stages:
+Upload an invoice — a PDF, or a photo or screenshot of one (PNG, JPG, WEBP) — and the
+pipeline runs ten visible stages:
 ingest → document analysis → AI extraction → validation → vendor verification → duplicate
 detection → PO matching → reconciliation → decision → output. The result is one of
 **APPROVED**, **NEEDS_REVIEW** or **REJECTED**, with the reason codes, the evidence numbers behind
@@ -25,7 +27,8 @@ someone — a ready-to-send draft email.
 
 **The LLM reads. Deterministic code decides.**
 
-Gemini is used for exactly one thing: turning a messy PDF into structured, schema-validated fields.
+Gemini is used for exactly one thing: turning a messy document — a PDF, a scan or a
+phone photo — into structured, schema-validated fields.
 The approve/hold/reject decision is made by a pure-Python rules engine with explicit, configurable
 thresholds — no model call inside it. The same invoice and the same reference data produce the same
 decision every time, every rule that fires emits a reason code with the numbers it compared, and
@@ -38,10 +41,10 @@ and control over financial risk.
 
 | Page | What it does |
 |---|---|
-| **New run** | Drag-and-drop an invoice PDF, or run any of 15 sample invoices with one click. Each sample says which scenario it exercises. |
-| **Live run view** | The ten stages animate `pending → running → result` from real backend events over Server-Sent Events. Expand any stage for its evidence: extracted fields, rules evaluated, PO candidates with scores, the reconciliation table. Alongside it, the original PDF and every field read from it with a confidence score. |
+| **New run** | Drag-and-drop an invoice — PDF, PNG, JPG or WEBP, up to 10 MB — or run any of 16 sample invoices with one click. Each sample says which scenario it exercises. |
+| **Live run view** | The ten stages animate `pending → running → result` from real backend events over Server-Sent Events. Expand any stage for its evidence: extracted fields, rules evaluated, PO candidates with scores, the reconciliation table. Alongside it, the original document — PDF pages, or the uploaded image fitted to the panel and zoomable — and every field read from it with a confidence score. |
 | **Decision card** | Outcome, a plain-English explanation containing the actual figures, the recommended next action, every reason code with evidence, a ready-to-send draft email, and a downloadable audit JSON. |
-| **Dashboard** | KPI tiles, full run history, filter by outcome, search by vendor / invoice number / PO. Click any row to replay that run exactly as it happened, or **Re-run** it against the reference data as it now stands. |
+| **Dashboard** | KPI tiles, full run history with a PDF / Scanned PDF / Image badge per run, filter by outcome, search by vendor / invoice number / PO. Click any row to replay that run exactly as it happened, or **Re-run** it against the reference data as it now stands. |
 | **Reference data** | Vendors, purchase orders with live remaining balances, the processed-invoice ledger, the policy file, all reason codes, AI usage in the last 24h, and a "Reset demo data" button. **Add vendor** and **Add PO** forms onboard a supplier on screen — with the same GSTIN checksum the pipeline applies to invoices — so a held invoice can be re-run and approved. |
 
 Nothing in the UI is simulated: no fake timers, no hardcoded outcomes. Every stage
@@ -129,8 +132,9 @@ Then run every scenario against the deployed service:
 python scripts/smoke_live.py --base-url https://<your-service>.onrender.com --reset
 ```
 
-It wakes the host, checks the database, runs all 14 sample invoices and exits
-non-zero if any one of them does not produce its expected outcome.
+It wakes the host, checks the database, runs every sample invoice — PDFs and
+the phone photo alike — and exits non-zero if any one of them does not produce
+its expected outcome.
 
 To restore a known state before a demo:
 
@@ -147,7 +151,7 @@ curl -X POST https://<your-service>.onrender.com/api/admin/reset
 ```
 
 This matters more than it looks. Duplicate detection includes a file-hash check,
-so running the *same* sample PDF twice without a reset will correctly reject the
+so running the *same* sample twice without a reset will correctly reject the
 second attempt as `DUPLICATE_CONFIRMED_HASH`. That is the system working — but it
 is not what you want the happy path to do on camera.
 
@@ -168,7 +172,8 @@ Render instance removes the sleep entirely if you prefer not to manage it.
 Under active construction, built in phases. This README is expanded as each phase lands; setup,
 deployment and limitations sections arrive with the phases that make them true.
 
-Working end-to-end and deployed. All 15 sample invoices produce their expected
-outcome, in order, after a reset. 295 tests pass offline.
+Working end-to-end and deployed. All 16 sample invoices — including a phone
+photo uploaded as a JPG — produce their expected outcome, in order, after a
+reset. 334 tests pass offline.
 
 Remaining: a final documentation pass.

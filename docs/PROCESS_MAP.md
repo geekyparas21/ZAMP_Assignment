@@ -23,18 +23,20 @@ Exactly **one LLM call per run** (extraction). Everything downstream is determin
 
 ```mermaid
 flowchart TD
-    A[Invoice PDF uploaded<br/>or sample selected] --> S1
+    A[Invoice uploaded<br/>PDF · PNG · JPG · WEBP<br/>or sample selected] --> S1
 
-    S1[1 · INGEST<br/>SHA-256 hash, size, page count,<br/>store bytes in DB]
-    S1 -->|not a PDF / empty / corrupt| F[FAILED<br/>clear message + Retry]
+    S1[1 · INGEST<br/>detect real type from magic bytes,<br/>SHA-256 hash, size, page count,<br/>store original bytes in DB]
+    S1 -->|unsupported type / empty /<br/>over 10 MB / corrupt| F[FAILED<br/>clear message + Retry]
     S1 --> S2
 
-    S2{2 · DOCUMENT ANALYSIS<br/>chars of text per page}
-    S2 -->|at least 120 chars/page| T[Text path:<br/>send extracted text]
-    S2 -->|below 120 chars/page| V[Scanned path:<br/>render pages to images]
+    S2{2 · DOCUMENT ANALYSIS<br/>which path does this need?}
+    S2 -->|PDF, at least 120 chars/page| T[Text path:<br/>send extracted text]
+    S2 -->|PDF, below 120 chars/page| V[Scanned path:<br/>render pages to images]
+    S2 -->|image: no text layer to check| I[Image path:<br/>apply EXIF orientation,<br/>cap long edge at 2000 px]
 
     T --> S3
     V --> S3
+    I --> S3
     S3[3 · EXTRACTION · LLM<br/>strict JSON schema,<br/>per-field confidence,<br/>is_invoice flag]
     S3 -->|retries exhausted / HTTP 429| F
     S3 -->|document is not an invoice| R0[REJECTED<br/>NOT_AN_INVOICE]
@@ -97,6 +99,30 @@ replayed rather than the document re-read, so a re-run spends no quota and the
 only thing that can have changed is the reference data — which is the whole
 point of pressing it. The superseded run's ledger entry is withdrawn first;
 without that, the document would match itself as a duplicate.
+
+### Input types
+
+| Input | How it is identified | Path taken | Code recorded |
+|---|---|---|---|
+| **Text PDF** | `%PDF-` header, ≥ 120 extractable chars/page | Extracted text is sent to the model | — |
+| **Scanned PDF** | `%PDF-` header, < 120 chars/page | Pages rendered to PNG and sent as images | `SCANNED_DOCUMENT` |
+| **Image** (PNG, JPG/JPEG, WEBP) | Image magic bytes | Straight to vision — there is no text layer to test | `IMAGE_UPLOAD` |
+| Anything else | Magic bytes name it (GIF, ZIP/Office, TIFF, text…) | Refused | `FILE_TYPE_UNSUPPORTED` |
+
+The type is read from the file's **content**, never its extension: a `.txt`
+renamed `.png` fails as the text file it is, and a PDF renamed `.png` is
+processed as the PDF it is.
+
+**What happens to an image before the model sees it.** EXIF orientation is
+applied first — a phone stores the sensor's view plus a tag saying which way
+is up, and a model handed the raw pixels would be reading a sideways invoice.
+The long edge is then capped at 2000 px, because beyond that nothing more
+becomes legible and every extra pixel is free-tier tokens. Both the original
+and the processed dimensions are shown on the stage, so what was sent is
+never in doubt. If the shorter side of the uploaded image is under 600 px,
+`LOW_IMAGE_QUALITY` holds the invoice for a human rather than trusting an
+extraction nobody can verify. The **original** bytes are what get stored,
+hashed for duplicate detection, and shown in the preview panel.
 
 Every stage streams `pending → running → passed | warning | failed | skipped` over **Server-Sent Events**, and is persisted as a `RunStep` row with start/end time, duration, a one-line human summary and a structured detail payload.
 
@@ -178,6 +204,7 @@ Every code carries a `severity`, a human-readable message template, and the **ev
 | `MISSING_INVOICE_DATE` | Critical field absent from the document | — |
 | `MISSING_TOTAL` | Critical field absent from the document | — |
 | `LOW_CONFIDENCE_CRITICAL_FIELD` | Model confidence below 0.70 on a critical field | Field name, confidence |
+| `LOW_IMAGE_QUALITY` | An uploaded image's shorter side is under 600 px | Uploaded dimensions, the threshold |
 | `ARITHMETIC_LINES_VS_SUBTOTAL` | Sum of line amounts ≠ stated subtotal (beyond ₹1 rounding) | Sum of lines, stated subtotal, difference |
 | `ARITHMETIC_SUBTOTAL_TAX_TOTAL` | subtotal + tax ≠ total (beyond ₹1 rounding) | Each component and the gap |
 | `CURRENCY_MISMATCH` | Invoice currency differs from PO currency | Both currencies |
@@ -191,13 +218,17 @@ Every code carries a `severity`, a human-readable message template, and the **ev
 | `PARTIAL_INVOICE_AGAINST_PO` | The invoice bills part of an open PO; remaining balance is shown |
 | `TAX_INCLUSIVE_PRESENTATION` | Prices are presented inclusive of GST; normalised before comparison |
 | `PO_HAS_NO_LINE_DETAIL` | The matched PO holds a committed value with no line items (a blanket or service PO), so only the total could be reconciled |
-| `SCANNED_DOCUMENT` | No text layer was found; the vision extraction path was used |
+| `SCANNED_DOCUMENT` | A PDF had no text layer; its pages were rendered and read as images |
+| `IMAGE_UPLOAD` | The invoice arrived as an image (photo or screenshot) and went straight to the vision path |
 
 ### FAILED
 
 | Code | Fires when |
 |---|---|
-| `FILE_NOT_PDF` / `FILE_EMPTY` / `FILE_CORRUPT` / `FILE_ENCRYPTED` | Ingest cannot open the input |
+| `FILE_TYPE_UNSUPPORTED` | The file is not a PDF, PNG, JPG or WEBP — the message names what it actually is and lists what would be accepted |
+| `FILE_TOO_LARGE` | The file is over the 10 MB limit in `rules.yaml` |
+| `FILE_EMPTY` / `FILE_CORRUPT` / `FILE_ENCRYPTED` | Ingest cannot open the input |
+| `FILE_IMAGE_UNREADABLE` | The bytes claim to be an image but cannot be decoded |
 | `LLM_RATE_LIMITED` | HTTP 429 persists after retries and the fallback model |
 | `LLM_UNAVAILABLE` | Provider error or timeout after retries |
 | `EXTRACTION_SCHEMA_INVALID` | Model output fails schema validation after retries |
@@ -217,7 +248,8 @@ Every code carries a `severity`, a human-readable message template, and the **ev
 | 4a | Total off by ₹180 from freight/rounding | `APPROVED` | `TOTAL_VARIANCE_WITHIN_TOLERANCE` |
 | 4b | One line's unit price raised 8% against the PO | `NEEDS_REVIEW` | `PRICE_VARIANCE_EXCEEDS_TOLERANCE` |
 
+| 10 | Phone photo of an invoice (JPG, on a desk, at an angle, lit unevenly) matching an open PO exactly | `APPROVED` | `IMAGE_UPLOAD` |
 | 9 | Unknown supplier, correctly billed to us, no PO quoted | `NEEDS_REVIEW`, then `APPROVED` after onboarding + a PO | `VENDOR_UNKNOWN` (primary), `NO_PO_FOUND`; then `PO_INFERRED_HIGH_CONFIDENCE` |
 | — | Consumer receipt — unknown seller, billed to an individual | `NEEDS_REVIEW` | `VENDOR_UNKNOWN` (primary), `BILLED_TO_OTHER_ENTITY`, `NO_PO_FOUND` |
 
-Additional cases that must be handled without crashing (not featured in the video): non-PDF upload, encrypted or corrupt PDF, a quotation instead of an invoice, a blocked vendor, a bank-detail mismatch, and an LLM timeout.
+Additional cases that must be handled without crashing (not featured in the video): an unsupported file type, an oversized file, encrypted or corrupt PDF, a quotation instead of an invoice, a blocked vendor, a bank-detail mismatch, and an LLM timeout.

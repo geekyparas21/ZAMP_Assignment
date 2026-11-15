@@ -170,7 +170,7 @@ class GeminiExtractor:
                         response_tokens=usage.get("response", 0),
                         total_tokens=usage.get("total", 0),
                         raw_response=payload,
-                        input_kind="page_images" if document.is_scanned else "text",
+                        input_kind=_input_kind(document),
                         warnings=warnings,
                     )
                 except ValidationError as exc:
@@ -217,10 +217,16 @@ class GeminiExtractor:
                     detail="the document has no text layer and no page images "
                            "could be rendered")
             parts.append(
+                "This invoice was uploaded as a photograph or screenshot, so "
+                "it is supplied as the image below. It may be taken at an "
+                "angle, unevenly lit, or include background around the page. "
+                "Read it carefully."
+                if document.kind == "image" else
                 "This document has no text layer, so it is supplied as page "
                 "images below. Read them carefully; the scan is imperfect.")
             for image in document.page_images:
-                parts.append(types.Part.from_bytes(data=image, mime_type="image/png"))
+                parts.append(types.Part.from_bytes(
+                    data=image, mime_type=document.image_media_type))
         else:
             parts.append("Invoice text extracted from the PDF:\n\n"
                          f"---\n{document.text}\n---")
@@ -252,6 +258,13 @@ class GeminiExtractor:
             raise ExtractionError("LLM_UNAVAILABLE", attempts=1,
                                   detail="the model returned an empty response")
         return json.loads(text), usage
+
+
+def _input_kind(document: DocumentInfo) -> str:
+    """What the model was actually given, recorded on the run."""
+    if document.kind == "image":
+        return "image"
+    return "page_images" if document.is_scanned else "text"
 
 
 def _parse(payload: dict) -> tuple[ExtractedInvoice, list[str]]:

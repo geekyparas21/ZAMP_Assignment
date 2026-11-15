@@ -19,18 +19,24 @@ from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from sqlmodel import Session, func, select
 
-from .config import SAMPLES_DIR
+from .config import get_rules, sample_path
 from .db import get_engine, get_session
 from .models import LedgerRow, Run, RunStep, StoredFile
 from .money import format_inr
 from .pipeline.events import bus, sse_format
 from .pipeline.runner import STAGES, execute_run, new_run_id
+from .services.document import accepted_label, max_file_bytes
 from .services.extractor import RecordedExtractor
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["runs"])
 
-MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+#: The outer guard. The policy limit in rules.yaml is what an operator cares
+#: about, and a file over it produces a FAILED run with FILE_TOO_LARGE so the
+#: refusal is visible on the dashboard and auditable like any other decision.
+#: This multiple of it exists only so a pathologically large upload is dropped
+#: at the door rather than read into memory and stored first.
+HARD_UPLOAD_CEILING_FACTOR = 2
 
 
 # ---------------------------------------------------------------------------
@@ -56,6 +62,8 @@ def run_summary(run: Run) -> dict[str, Any]:
         "currency": run.currency,
         "po_number": run.po_number,
         "is_scanned": run.is_scanned,
+        "file_kind": run.file_kind or ("pdf_scanned" if run.is_scanned
+                                       else "pdf_text"),
         "page_count": run.page_count,
         "llm_model": run.llm_model,
         "llm_tokens": run.llm_tokens,
@@ -96,10 +104,12 @@ def run_detail(run: Run, steps: list[RunStep]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 def _start(background: BackgroundTasks, session: Session, data: bytes,
            filename: str, sample_key: str | None) -> dict[str, Any]:
-    if len(data) > MAX_UPLOAD_BYTES:
+    limit = max_file_bytes()
+    if len(data) > limit * HARD_UPLOAD_CEILING_FACTOR:
         raise HTTPException(
             status_code=413,
-            detail=f"File is larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.")
+            detail=f"File is {len(data) / (1024 * 1024):.1f} MB, far over the "
+                   f"{get_rules().get('ingest.max_file_mb')} MB limit.")
 
     run_id = new_run_id()
     session.add(Run(id=run_id, filename=filename, sample_key=sample_key,
@@ -124,11 +134,20 @@ async def _run_in_thread(run_id: str, data: bytes, filename: str,
 @router.post("/runs")
 async def start_run(background: BackgroundTasks, file: UploadFile = File(...),
                     session: Session = Depends(get_session)) -> dict[str, Any]:
-    """Upload a PDF and start processing it."""
+    """Upload an invoice - PDF or image - and start processing it.
+
+    The type is not checked here. Ingest detects it from the file's own bytes
+    and refuses it with a reason code if it is not one we accept, which means
+    a bad upload appears on the dashboard as a FAILED run with an explanation
+    rather than as a toast the user can dismiss and forget.
+    """
     data = await file.read()
     if not data:
-        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
-    return _start(background, session, data, file.filename or "upload.pdf", None)
+        raise HTTPException(
+            status_code=400,
+            detail=f"The uploaded file is empty. Accepted formats: "
+                   f"{accepted_label()}.")
+    return _start(background, session, data, file.filename or "upload", None)
 
 
 @router.post("/runs/sample")
@@ -139,8 +158,8 @@ def start_sample_run(background: BackgroundTasks, key: str = Form(...),
     The sample is read and handed to the pipeline as ordinary bytes - no code
     path anywhere branches on which sample it is.
     """
-    path = (SAMPLES_DIR / f"{key}.pdf").resolve()
-    if not path.is_file() or SAMPLES_DIR.resolve() not in path.parents:
+    path = sample_path(key)
+    if path is None:
         raise HTTPException(status_code=404, detail="Sample not found.")
     return _start(background, session, path.read_bytes(), path.name, key)
 
@@ -325,14 +344,19 @@ def get_run(run_id: str, session: Session = Depends(get_session)) -> dict:
 
 @router.get("/runs/{run_id}/file")
 def get_run_file(run_id: str, session: Session = Depends(get_session)) -> Response:
-    """The original PDF, served from the database rather than disk."""
+    """The original document, served from the database rather than disk.
+
+    The media type is whatever was detected at ingest, so the browser renders
+    a PDF in its viewer and an image as an image.
+    """
     stored = session.get(StoredFile, run_id)
     if stored is None:
         raise HTTPException(status_code=404, detail="File not found for this run.")
     return Response(
-        content=stored.content, media_type="application/pdf",
+        content=stored.content,
+        media_type=stored.content_type or "application/octet-stream",
         headers={"Content-Disposition":
-                 f'inline; filename="{stored.filename or "invoice.pdf"}"'})
+                 f'inline; filename="{stored.filename or "invoice"}"'})
 
 
 @router.get("/runs/{run_id}/audit")

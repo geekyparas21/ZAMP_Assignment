@@ -11,9 +11,14 @@ point of using a model for extraction is that field positions and labels vary:
   Template C "compact"  - dense right-aligned header, labels "Ref" / "Dated",
                           summary block, optionally GST-INCLUSIVE rates.
 
-One sample is additionally flattened into an image-only PDF (rotated, blurred,
-noisy, grey paper) to exercise the vision extraction path. The script verifies
-in code that the result has no extractable text layer.
+Two samples are additionally flattened into images, because that is how
+invoices really arrive:
+
+  * one is written back as an image-only PDF (rotated, blurred, noisy, grey
+    paper), the way a desk scanner produces one. The script verifies in code
+    that the result has no extractable text layer.
+  * one is saved as a JPG that looks like a phone photo: the page lying on a
+    desk at a slight angle, lit unevenly, with the desk visible around it.
 
     python scripts/generate_invoices.py
 """
@@ -140,6 +145,8 @@ class Invoice:
     extra_note: str = ""
     doc_title: str = "TAX INVOICE"
     scanned: bool = False
+    #: Saved as a JPG photograph of the page rather than as a PDF.
+    photo: bool = False
     bank_last4_override: str | None = None
     freight: Decimal | None = None
 
@@ -568,6 +575,89 @@ def scanify(pdf_bytes: bytes, seed: int = 7) -> bytes:
     return result
 
 
+def photoify(pdf_bytes: bytes, seed: int = 11) -> bytes:
+    """Render a PDF as a JPG that looks like a phone photo of the page.
+
+    The point of this sample is that nothing about it is tidy: the page sits
+    on a desk at an angle, the desk is visible around it, one corner is lit
+    brighter than the other, the whole frame has the mild keystone of a camera
+    held slightly off square, and it is a lossy JPEG at phone resolution. If
+    the pipeline can read this, it can read what an AP clerk is actually sent.
+
+    Deliberately NOT given an EXIF orientation tag: rotation handling is
+    covered by tests with a tagged fixture, and a sample that renders sideways
+    in a tool that ignores EXIF would look like a bug during a demo.
+    """
+    rng = random.Random(seed)
+    src = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    pix = src[0].get_pixmap(dpi=220)
+    page = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+    src.close()
+
+    # Warm white: office paper under indoor light is never 255,255,255.
+    page = Image.blend(page, Image.new("RGB", page.size, (247, 243, 232)), 0.16)
+
+    pw, ph = page.size
+    margin = int(pw * 0.085)
+    frame_size = (pw + margin * 2, ph + margin * 2)
+
+    # The desk: dark, slightly mottled, so the page edge is unmistakable.
+    desk = Image.new("RGB", frame_size, (78, 70, 62))
+    grain = Image.effect_noise(frame_size, 34).convert("L")
+    desk = Image.blend(desk, Image.merge("RGB", (grain, grain, grain)), 0.22)
+    desk = desk.filter(ImageFilter.GaussianBlur(1.6))
+
+    # The page, rotated a few degrees as it lies on the desk.
+    angle = rng.uniform(2.6, 4.0)
+    rotated = page.convert("RGBA").rotate(
+        angle, resample=Image.BICUBIC, expand=True)
+
+    # A soft drop shadow under it, offset down-right from the light source.
+    shadow = Image.new("L", frame_size, 0)
+    shadow.paste(rotated.split()[3], (margin + int(margin * 0.22),
+                                      margin + int(margin * 0.30)))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(margin * 0.30))
+    desk = Image.composite(Image.new("RGB", frame_size, (34, 30, 27)),
+                           desk, shadow.point(lambda v: int(v * 0.75)))
+    desk.paste(rotated, (margin, margin), rotated)
+    frame = desk
+
+    # Keystone: the camera was not held square to the page, so the far edge
+    # of the whole frame is compressed.
+    fw, fh = frame.size
+    skew = int(fw * 0.022)
+    frame = frame.transform(
+        (fw, fh), Image.QUAD,
+        data=(-skew, 0, 0, fh, fw, fh, fw + skew, 0),
+        resample=Image.BICUBIC, fillcolor=(70, 63, 56))
+
+    # Uneven lighting: a window to the upper left, falling away to the right.
+    light = Image.new("L", (fw, fh))
+    ld = ImageDraw.Draw(light)
+    for x in range(0, fw, 6):
+        ld.rectangle([x, 0, x + 6, fh], fill=int(96 * (1 - x / fw) ** 1.4))
+    light = light.filter(ImageFilter.GaussianBlur(fw * 0.04))
+    frame = Image.composite(Image.new("RGB", (fw, fh), (255, 252, 242)),
+                            frame, light)
+
+    vignette = Image.new("L", (fw, fh), 0)
+    vd = ImageDraw.Draw(vignette)
+    vd.rectangle([0, int(fh * 0.86), fw, fh], fill=58)
+    vd.rectangle([int(fw * 0.88), 0, fw, fh], fill=48)
+    vignette = vignette.filter(ImageFilter.GaussianBlur(fw * 0.05))
+    frame = Image.composite(Image.new("RGB", (fw, fh), (62, 57, 52)),
+                            frame, vignette)
+
+    # Hand shake, sensor noise, and a phone's JPEG.
+    frame = frame.filter(ImageFilter.GaussianBlur(0.7))
+    sensor = Image.effect_noise((fw, fh), 18).convert("L")
+    frame = Image.blend(frame, Image.merge("RGB", (sensor, sensor, sensor)), 0.07)
+
+    buf = io.BytesIO()
+    frame.save(buf, format="JPEG", quality=76, optimize=True)
+    return buf.getvalue()
+
+
 def extractable_chars(pdf_bytes: bytes) -> int:
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         return sum(len((p.extract_text() or "").strip()) for p in pdf.pages)
@@ -774,6 +864,23 @@ def samples() -> list[Invoice]:
                         "CAN", D("1850.00"))],
             extra_note="First supply against our new vendor registration.",
         ),
+
+        # --- 10. A phone photo of a perfectly ordinary invoice -------------
+        # The realistic-upload case: nothing wrong with the invoice at all.
+        # It is simply a JPG taken on a phone instead of a PDF, against an
+        # open PO it matches exactly, so it must approve on the strength of
+        # the vision path alone.
+        Invoice(
+            filename="10_phone_photo_vega.jpg",
+            scenario="Phone photo of an invoice (JPG, on a desk, at an angle) "
+                     "— matches PO-4580 exactly and must still approve.",
+            template="A", **vega,
+            invoice_number="VI-2026-0533", invoice_date="2026-11-13",
+            due_date="2026-12-13", po_reference="PO-4580",
+            lines=[Line("Electromagnetic flow meter DN50", "9026", D("6"),
+                        "NOS", D("18500.00"))],
+            photo=True,
+        ),
     ]
 
 
@@ -798,6 +905,7 @@ EXPECTED: dict[str, tuple[str, tuple[str, ...]]] = {
     "08_bank_mismatch_bharat.pdf": ("NEEDS_REVIEW", ("VENDOR_BANK_MISMATCH",)),
     "09_unknown_vendor_meridian.pdf": ("NEEDS_REVIEW",
                                        ("VENDOR_UNKNOWN", "NO_PO_FOUND")),
+    "10_phone_photo_vega.jpg": ("APPROVED", ("IMAGE_UPLOAD",)),
 }
 
 
@@ -827,6 +935,8 @@ def cross_check_against_pos() -> list[str]:
          lambda t, po: t - po > Decimal("500"), "over PO beyond tolerance"),
         ("01_scanned_no_po_deccan.pdf", "PO-4520",
          lambda t, po: t == po, "matches the PO it must be inferred to"),
+        ("10_phone_photo_vega.jpg", "PO-4580",
+         lambda t, po: t == po, "photo sample matches its quoted PO exactly"),
     ]
     totals = {inv.filename: inv.grand_total for inv in samples()}
     problems = []
@@ -844,31 +954,51 @@ def cross_check_against_pos() -> list[str]:
 
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    for old in OUT_DIR.glob("*.pdf"):
-        old.unlink()
+    for pattern in ("*.pdf", "*.png", "*.jpg", "*.jpeg", "*.webp"):
+        for old in OUT_DIR.glob(pattern):
+            old.unlink()
 
     manifest_rows = []
     failures = []
 
     for inv in samples():
         pdf = build_pdf(inv)
-        kind = "text"
-        if inv.scanned:
-            pdf = scanify(pdf)
-            kind = "scanned"
-        path = OUT_DIR / inv.filename
-        path.write_bytes(pdf)
 
-        chars = extractable_chars(pdf)
-        with pdfplumber.open(io.BytesIO(pdf)) as doc:
-            pages = len(doc.pages)
+        if inv.photo:
+            # An image, not a PDF: there is no text layer to measure, and the
+            # dimensions are what matter instead.
+            payload = photoify(pdf)
+            kind = "image"
+            path = OUT_DIR / inv.filename
+            path.write_bytes(payload)
+            with Image.open(io.BytesIO(payload)) as photo:
+                width, height = photo.size
+            chars, pages = 0, 1
+            if path.suffix.lower() not in (".jpg", ".jpeg"):
+                failures.append(f"{inv.filename}: a photo sample must be a JPG")
+            if min(width, height) < 1200:
+                failures.append(f"{inv.filename}: photo is only {width}x{height}, "
+                                f"too small to read reliably")
+            print(f"  photo sample {inv.filename}: {width}x{height} px, "
+                  f"{len(payload) / 1024:.0f} KB")
+        else:
+            payload = scanify(pdf) if inv.scanned else pdf
+            kind = "scanned" if inv.scanned else "text"
+            path = OUT_DIR / inv.filename
+            path.write_bytes(payload)
 
-        # Verify the scanned sample really has no text layer, and that the
-        # text samples really do.
-        if inv.scanned and chars > 0:
-            failures.append(f"{inv.filename}: expected NO text layer, found {chars} chars")
-        if not inv.scanned and chars < 200:
-            failures.append(f"{inv.filename}: text layer too thin ({chars} chars)")
+            chars = extractable_chars(payload)
+            with pdfplumber.open(io.BytesIO(payload)) as doc:
+                pages = len(doc.pages)
+
+            # Verify the scanned sample really has no text layer, and that the
+            # text samples really do.
+            if inv.scanned and chars > 0:
+                failures.append(
+                    f"{inv.filename}: expected NO text layer, found {chars} chars")
+            if not inv.scanned and chars < 200:
+                failures.append(
+                    f"{inv.filename}: text layer too thin ({chars} chars)")
 
         outcome, reasons = EXPECTED.get(inv.filename, ("APPROVED", ()))
         manifest_rows.append({
@@ -876,7 +1006,7 @@ def main() -> None:
             "vendor": inv.vendor_name, "number": inv.invoice_number or "(missing)",
             "po": inv.po_reference or "(none)", "total": inr(inv.grand_total),
             "total_raw": str(inv.grand_total), "chars": chars, "pages": pages,
-            "size_kb": round(len(pdf) / 1024, 1), "scenario": inv.scenario,
+            "size_kb": round(len(payload) / 1024, 1), "scenario": inv.scenario,
             "expected_outcome": outcome, "expected_reasons": list(reasons),
         })
 

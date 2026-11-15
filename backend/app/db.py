@@ -68,8 +68,47 @@ def reset_engine() -> None:
     _engine = None
 
 
+#: Columns added after the first deploy. create_all() creates missing tables
+#: but never alters an existing one, so a column added to a model would be
+#: missing on the hosted database until it was dropped and reseeded - taking
+#: the run history with it. Each entry is (table, column, DDL type, default).
+_ADDED_COLUMNS: tuple[tuple[str, str, str, str], ...] = (
+    ("runs", "file_kind", "VARCHAR", "'pdf_text'"),
+)
+
+
 def create_tables() -> None:
     SQLModel.metadata.create_all(get_engine())
+    _add_missing_columns()
+
+
+def _add_missing_columns() -> None:
+    """Bring an existing database up to the current models, additively.
+
+    Only ever adds a nullable-or-defaulted column, so it is safe to run on
+    every boot and cannot lose data. Anything beyond that would want a real
+    migration tool.
+    """
+    from sqlalchemy import inspect
+
+    engine = get_engine()
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+
+    for table, column, ddl_type, default in _ADDED_COLUMNS:
+        if table not in existing_tables:
+            continue
+        columns = {c["name"] for c in inspector.get_columns(table)}
+        if column in columns:
+            continue
+        statement = (f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type} "
+                     f"DEFAULT {default}")
+        try:
+            with engine.begin() as connection:
+                connection.execute(text(statement))
+            log.info("added missing column %s.%s", table, column)
+        except Exception as exc:  # pragma: no cover - reported, never fatal
+            log.error("could not add column %s.%s: %s", table, column, exc)
 
 
 def get_session() -> Iterator[Session]:

@@ -59,7 +59,7 @@ When it lands on **APPROVED**:
 
 Click sample **01 · Deccan Precision Tools**.
 
-> "This one is a photograph of an invoice — no text layer at all — and it
+> "This one is a scan — a flatbed image with no text layer at all — and it
 > doesn't quote a PO number."
 
 When it lands on **APPROVED**:
@@ -72,6 +72,15 @@ When it lands on **APPROVED**:
 > pretending the vendor quoted it. Below its confidence threshold, or too
 > close to a second candidate, it goes to a human instead. Sample 01b is
 > exactly that case."
+
+**If you have ten seconds spare, add the photo.** Click sample
+**10 · Vega Instruments** — a JPG of an invoice lying on a desk, taken at an
+angle under uneven light.
+
+> "Same pipeline, no special case. It came in as a photo, so there was no text
+> layer to check — it went straight to vision. Expand document analysis: it
+> applied the EXIF rotation and shrank it to 2000 pixels on the long edge
+> before spending a token on it. Approved, against PO-4580."
 
 ### 2:30 — A duplicate wearing a disguise (45s)
 
@@ -137,8 +146,13 @@ they want: duplicates, tolerances, or the edge cases below. Keep the
 **Reference** page one tab away — most questions are answered by showing the
 vendor master, a PO's remaining balance, or the policy file.
 
-If they want to upload their own invoice, say yes. Then read the next section
-first.
+If they want to upload their own invoice, say yes — **and offer the phone**.
+Photographing an invoice on the spot and dropping the JPG straight in is the
+most convincing thing you can do with the upload box, because nothing about it
+can have been prepared. PDF, PNG, JPG and WEBP are all accepted, up to 10 MB;
+hold the phone roughly square to the page and the rest is the pipeline's
+problem. Expect `VENDOR_UNKNOWN` on a real supplier's invoice — which is the
+next section, and the better demo.
 
 ---
 
@@ -244,7 +258,9 @@ added are cleared.
 | …the vendor is blocked? | Sample **05 · Orient Electricals** → `REJECTED`, `VENDOR_BLOCKED`. The contrast with `VENDOR_UNKNOWN` is the whole policy in one pair of runs. |
 | …it isn't an invoice at all? | Sample **06** (a quotation) → `REJECTED`, `NOT_AN_INVOICE`. No payment is due on a quote. |
 | …the vendor changed their bank details? | Sample **08** → `NEEDS_REVIEW`, `VENDOR_BANK_MISMATCH`, with the "phone a number you already hold" warning. The most common payment-redirection fraud. |
-| …someone uploads a PNG, or a corrupt PDF? | It fails honestly — `FILE_NOT_PDF` with a clear message — rather than guessing. |
+| …the invoice is a phone photo rather than a PDF? | Sample **10 · Vega Instruments**, or photograph something on the spot. PNG, JPG and WEBP run the same ten stages; the stage detail shows the rotation and downscale applied before the model saw it. |
+| …the photo is blurry or tiny? | Under 600 px on the shorter side it is held as `LOW_IMAGE_QUALITY` — a hold, not a guess. An extraction nobody can verify is not a basis for paying. |
+| …someone uploads a GIF, a 20 MB file, or a corrupt PDF? | It fails honestly — `FILE_TYPE_UNSUPPORTED` (naming what the file actually is, and what would be accepted), `FILE_TOO_LARGE`, or `FILE_CORRUPT` — rather than guessing. The refusal lands on the dashboard as a FAILED run, with the rest of the audit trail. |
 | …the invoice splits across several deliveries? | Samples **02a → 02b → 02c** in order. The first two part-bills approve and move the PO balance; the third is judged against what is *left* and held as `PO_OVERBILLED`. |
 | …the AI misreads a field? | **Reference → Policy**: critical fields below 0.70 confidence are routed to a human. And confidence is a ceiling, not a verdict — validation checks can only lower what the model claims. |
 | …how much does a run cost? | One Gemini call per run; the live counter is on the Reference page. A re-run costs nothing. |

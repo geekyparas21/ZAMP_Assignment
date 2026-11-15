@@ -131,6 +131,36 @@ class RunRecorder:
         self.session.commit()
 
 
+def _source_label(document) -> str:
+    if document.kind == "image":
+        return "uploaded image"
+    return "page images" if document.is_scanned else "text layer"
+
+
+def _document_summary(document) -> str:
+    """Why this document is taking the path it is taking, in one line.
+
+    An image never had a text layer to check, so saying "no text layer found"
+    about one would imply a test that was never run.
+    """
+    if document.image:
+        image = document.image
+        sent = (f"downscaled to {image['processed_width']}"
+                f"×{image['processed_height']} px"
+                if image["downscaled"] else "sent at full size")
+        rotated = (", EXIF rotation applied"
+                   if image["exif_rotation_applied"] else "")
+        return (f"Image upload ({image['format']}, {image['original_width']}"
+                f"×{image['original_height']}) → vision extraction "
+                f"({sent}{rotated}).")
+    if document.is_scanned:
+        return (f"No text layer ({document.chars_per_page:.0f} chars/page) - "
+                f"reading {document.page_count} page image(s) with the vision "
+                f"model.")
+    return (f"Text layer found ({document.chars_per_page:.0f} chars/page) - "
+            f"sending text, no OCR needed.")
+
+
 def _status_for(findings: list[Finding]) -> str:
     """A stage is green unless something it found says otherwise."""
     if not findings:
@@ -284,7 +314,7 @@ def _execute(session: Session, recorder: RunRecorder, run: Run, data: bytes,
     # --- 1. Ingest ---------------------------------------------------------
     recorder.start("ingest")
     try:
-        document, analysis_findings = analyse(data, rules)
+        document, analysis_findings = analyse(data, rules, filename)
     except IngestError as exc:
         recorder.finish("ingest", "failed", Finding(exc.code, "ingest",
                                                     exc.evidence).message,
@@ -296,31 +326,41 @@ def _execute(session: Session, recorder: RunRecorder, run: Run, data: bytes,
     run.size_bytes = document.size_bytes
     run.page_count = document.page_count
     run.is_scanned = document.is_scanned
+    run.file_kind = document.kind
     session.add(run)
     session.add(StoredFile(run_id=run.id, filename=filename,
+                           content_type=document.media_type,
                            size_bytes=len(data), content=data))
     session.commit()
 
     recorder.finish("ingest", "passed",
-                    f"Accepted {filename} ({document.size_bytes / 1024:.0f} KB, "
-                    f"{document.page_count} page(s)).",
+                    f"Accepted {filename} as {document.kind_label} "
+                    f"({document.size_bytes / 1024:.0f} KB, "
+                    + (f"{document.image['original_width']}"
+                       f"×{document.image['original_height']} px)."
+                       if document.image else
+                       f"{document.page_count} page(s))."),
                     {"filename": filename, "sha256": document.sha256,
                      "size_bytes": document.size_bytes,
-                     "page_count": document.page_count})
+                     "page_count": document.page_count,
+                     "file_kind": document.kind,
+                     "file_kind_label": document.kind_label,
+                     "media_type": document.media_type,
+                     "max_file_mb": rules.get("ingest.max_file_mb"),
+                     "accepted_formats": rules.strings("ingest.accepted_formats")})
 
     # --- 2. Document analysis ----------------------------------------------
     recorder.start("document_analysis")
     recorder.finish(
-        "document_analysis", "passed",
-        (f"No text layer ({document.chars_per_page:.0f} chars/page) - reading "
-         f"{document.page_count} page image(s) with the vision model."
-         if document.is_scanned else
-         f"Text layer found ({document.chars_per_page:.0f} chars/page) - "
-         f"sending text, no OCR needed."),
+        "document_analysis", _status_for(analysis_findings),
+        _document_summary(document),
         {"is_scanned": document.is_scanned,
+         "file_kind": document.kind,
+         "file_kind_label": document.kind_label,
          "chars_per_page": document.chars_per_page,
          "threshold": rules.integer("extraction.scanned_page_char_threshold"),
          "path": document.path_label,
+         "image": document.image,
          "text_preview": document.text[:1500]})
 
     # --- 3. Extraction ------------------------------------------------------
@@ -358,7 +398,7 @@ def _execute(session: Session, recorder: RunRecorder, run: Run, data: bytes,
          f"no new AI call was made."
          if result.replayed else
          f"Read {len(result.invoice.lines)} line item(s) from the "
-         f"{'page images' if document.is_scanned else 'text layer'} using "
+         f"{_source_label(document)} using "
          f"{result.model} in {result.duration_ms / 1000:.1f}s."),
         result.redacted_log())
 

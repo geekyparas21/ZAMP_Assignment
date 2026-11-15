@@ -19,11 +19,26 @@ function StageDetail({ stage, detail }) {
       return (
         <div className="space-y-3">
           <Facts
-            rows={[
-              ['Extraction path', detail.path],
-              ['Characters per page', detail.chars_per_page],
-              ['Threshold for "scanned"', `below ${detail.threshold} chars/page`],
-            ]}
+            rows={detail.image
+              // An image never had a text layer to measure, so quoting a
+              // chars-per-page figure for one would imply a test that was
+              // never run. What matters instead is what was done to the
+              // picture before the model saw it.
+              ? [
+                ['File type', `${detail.image.format} image`],
+                ['Extraction path', detail.path],
+                ['As uploaded', `${detail.image.original_width} × ${detail.image.original_height} px`],
+                ['Sent to the model', `${detail.image.processed_width} × ${detail.image.processed_height} px`
+                  + (detail.image.downscaled ? ` (downscaled, long edge capped at ${detail.image.max_long_edge_px})` : ' (no downscale needed)')],
+                ['EXIF orientation', detail.image.exif_rotation_applied
+                  ? `tag ${detail.image.exif_orientation} — rotation applied`
+                  : 'upright as stored'],
+              ]
+              : [
+                ['Extraction path', detail.path],
+                ['Characters per page', detail.chars_per_page],
+                ['Threshold for "scanned"', `below ${detail.threshold} chars/page`],
+              ]}
           />
           {detail.text_preview && (
             <div>
@@ -44,7 +59,7 @@ function StageDetail({ stage, detail }) {
           <Facts
             rows={[
               ['Model', detail.model],
-              ['Input', detail.input_kind === 'page_images' ? 'page images (vision)' : 'text layer'],
+              ['Input', { image: 'uploaded image (vision)', page_images: 'page images (vision)' }[detail.input_kind] ?? 'text layer'],
               ['Attempts', detail.attempts],
               ['Tokens', detail.tokens ? `${detail.tokens.total} (${detail.tokens.prompt} in, ${detail.tokens.response} out)` : '—'],
             ]}

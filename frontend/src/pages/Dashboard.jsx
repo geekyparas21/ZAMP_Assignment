@@ -4,8 +4,8 @@ import { Inbox, RefreshCw, RotateCw, Search } from 'lucide-react'
 
 import { api } from '../api'
 import {
-  Button, Card, CardHeader, EmptyState, ErrorNote, OutcomeChip, Spinner,
-  formatDuration, formatTimestamp, outcomeStyle,
+  Button, Card, CardHeader, EmptyState, ErrorNote, FileKindBadge, OutcomeChip,
+  Spinner, fileKindOf, formatDuration, formatTimestamp, outcomeStyle,
 } from '../components/ui'
 
 const FILTERS = [
@@ -159,6 +159,7 @@ export default function Dashboard() {
                 <tr>
                   <th className="px-4 py-2.5 font-medium">When</th>
                   <th className="px-4 py-2.5 font-medium">Vendor</th>
+                  <th className="px-4 py-2.5 font-medium">File</th>
                   <th className="px-4 py-2.5 font-medium">Invoice</th>
                   <th className="px-4 py-2.5 text-right font-medium">Amount</th>
                   <th className="px-4 py-2.5 font-medium">PO</th>
@@ -182,6 +183,9 @@ export default function Dashboard() {
                     </td>
                     <td className="max-w-[220px] truncate px-4 py-2.5 font-medium text-text">
                       {run.vendor_name ?? run.filename ?? '—'}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <FileKindBadge kind={fileKindOf(run)} />
                     </td>
                     <td className="tnum px-4 py-2.5 text-text-2">{run.invoice_number ?? '—'}</td>
                     <td className="tnum px-4 py-2.5 text-right text-text">

@@ -24,7 +24,7 @@ from sqlmodel import Session, select
 
 load_dotenv()
 
-from .config import SAMPLES_DIR, get_rules, get_settings  # noqa: E402
+from .config import SAMPLES_DIR, get_rules, get_settings, sample_path  # noqa: E402
 from .db import get_engine, get_session, init_db, ping, seed_reference_data  # noqa: E402
 from .models import (LedgerRow, LLMCall, POLineRow, PurchaseOrderRow,  # noqa: E402
                      VendorRow)
@@ -404,7 +404,7 @@ def list_samples() -> list[dict]:
     rows = json.loads(manifest.read_text(encoding="utf-8"))
     return [
         {
-            "key": row["file"].removesuffix(".pdf"),
+            "key": row["file"].rsplit(".", 1)[0],
             "file": row["file"],
             "vendor": row["vendor"],
             "invoice_number": row["number"],
@@ -418,13 +418,26 @@ def list_samples() -> list[dict]:
     ]
 
 
+#: Served media type per sample extension. FileResponse guesses from the
+#: suffix too, but naming them keeps the endpoint explicit about what it will
+#: hand out.
+SAMPLE_MEDIA_TYPES = {
+    ".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg", ".webp": "image/webp",
+}
+
+
 @app.get("/api/samples/{key}/file")
 def sample_file(key: str) -> FileResponse:
-    path = (SAMPLES_DIR / f"{key}.pdf").resolve()
-    # Keep path traversal out of a public endpoint.
-    if not path.is_file() or SAMPLES_DIR.resolve() not in path.parents:
+    # sample_path() resolves the extension and keeps path traversal out of a
+    # public endpoint.
+    path = sample_path(key)
+    if path is None:
         raise HTTPException(status_code=404, detail="sample not found")
-    return FileResponse(path, media_type="application/pdf", filename=path.name)
+    return FileResponse(
+        path, filename=path.name,
+        media_type=SAMPLE_MEDIA_TYPES.get(path.suffix.lower(),
+                                          "application/octet-stream"))
 
 
 # ---------------------------------------------------------------------------

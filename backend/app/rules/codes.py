@@ -76,18 +76,29 @@ def all_codes() -> list[ReasonCode]:
 # ===========================================================================
 # FAILED - the system could not process the input at all.
 # ===========================================================================
-FILE_NOT_PDF = _register(
-    "FILE_NOT_PDF", Severity.FAIL, "Not a PDF",
-    "The uploaded file is not a PDF (detected: {detected}).",
-    "Ask the sender to resend the invoice as a PDF.")
+FILE_TYPE_UNSUPPORTED = _register(
+    "FILE_TYPE_UNSUPPORTED", Severity.FAIL, "Unsupported file type",
+    "The uploaded file is a {detected}, which cannot be processed. "
+    "Accepted formats: {accepted}.",
+    "Ask the sender to resend the invoice as a PDF or an image "
+    "(PNG, JPG or WEBP).")
 FILE_EMPTY = _register(
     "FILE_EMPTY", Severity.FAIL, "Empty file",
     "The uploaded file is empty (0 bytes).",
     "Ask the sender to resend the invoice.")
+FILE_TOO_LARGE = _register(
+    "FILE_TOO_LARGE", Severity.FAIL, "File is too large",
+    "The uploaded file is {size_mb} MB, over the {limit_mb} MB limit.",
+    "Ask the sender for a smaller file, or photograph the invoice at a lower "
+    "resolution - 2000 px on the long edge is plenty.")
 FILE_CORRUPT = _register(
     "FILE_CORRUPT", Severity.FAIL, "Corrupt PDF",
     "The PDF could not be opened: {detail}",
     "Ask the sender to resend the invoice.")
+FILE_IMAGE_UNREADABLE = _register(
+    "FILE_IMAGE_UNREADABLE", Severity.FAIL, "Unreadable image",
+    "The image could not be decoded: {detail}",
+    "Ask the sender to resend the invoice, or to re-take the photograph.")
 FILE_ENCRYPTED = _register(
     "FILE_ENCRYPTED", Severity.FAIL, "Password-protected PDF",
     "The PDF is password-protected and cannot be read.",
@@ -248,6 +259,13 @@ MISSING_TOTAL = _register(
     "MISSING_TOTAL", Severity.REVIEW, "No total amount",
     "No payable total could be read from the document.",
     "Ask the vendor to reissue with a clear total.")
+LOW_IMAGE_QUALITY = _register(
+    "LOW_IMAGE_QUALITY", Severity.REVIEW, "Image resolution is too low to trust",
+    "The uploaded image is {width}x{height} px. The shorter side is below the "
+    "{threshold} px needed to read invoice text reliably, so what was extracted "
+    "may be wrong.",
+    "Check every field against the image before approving, or ask the sender "
+    "for a clearer photograph or the original PDF.")
 LOW_CONFIDENCE_CRITICAL_FIELD = _register(
     "LOW_CONFIDENCE_CRITICAL_FIELD", Severity.REVIEW, "A key field could not be read reliably",
     "Extraction confidence for {detail} fell below {threshold:.0%}.",
@@ -294,6 +312,11 @@ SCANNED_DOCUMENT = _register(
     "SCANNED_DOCUMENT", Severity.INFO, "Scanned document",
     "No text layer was found ({chars} characters over {pages} page(s)), so the pages "
     "were read as images.",
+    "No action needed.")
+IMAGE_UPLOAD = _register(
+    "IMAGE_UPLOAD", Severity.INFO, "Image upload",
+    "The invoice was uploaded as a {format} image ({width}x{height} px), which "
+    "has no text layer, so it was read with the vision model.",
     "No action needed.")
 ALL_CHECKS_PASSED = _register(
     "ALL_CHECKS_PASSED", Severity.INFO, "All checks passed",

@@ -13,6 +13,24 @@ meta:
   base_currency: "INR"
   matching_model: "2-way"   # invoice <-> purchase order
 
+# --- What may be uploaded --------------------------------------------------
+ingest:
+  # Invoices arrive as PDFs, but also as phone photos and screenshots, so
+  # images are accepted on the same pipeline. The file's real type is detected
+  # from its content (magic bytes), never from its extension.
+  accepted_formats: ["PDF", "PNG", "JPG", "JPEG", "WEBP"]
+  max_file_mb: 10
+  image:
+    # Phone cameras produce 12 MP images. Nothing above this adds legibility,
+    # and every extra pixel is tokens spent on the free tier.
+    max_long_edge_px: 2000
+    # Below this on the shorter side, text on a typical invoice is at the edge
+    # of readable, so the run carries a LOW_IMAGE_QUALITY warning rather than
+    # quietly trusting whatever was read.
+    low_quality_short_edge_px: 600
+    # Re-encoding quality after orientation and downscaling.
+    jpeg_quality: 90
+
 # --- Amount tolerances -----------------------------------------------------
 tolerance:
   # An invoice total may differ from the expected amount by the SMALLER of

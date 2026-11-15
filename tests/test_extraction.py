@@ -45,7 +45,8 @@ def reference(vendors, purchase_orders, ledger):
 
 @pytest.fixture(scope="session")
 def manifest():
-    return {row["file"]: row for row in
+    """Keyed by sample stem, since the samples are no longer all PDFs."""
+    return {row["file"].rsplit(".", 1)[0]: row for row in
             json.loads((SAMPLES / "manifest.json").read_text(encoding="utf-8"))}
 
 
@@ -56,7 +57,10 @@ ALL_STEMS = sorted(p.stem for p in FIXTURES.glob("*.json"))
 # The fixtures themselves
 # ===========================================================================
 def test_a_fixture_exists_for_every_sample():
-    samples = {p.stem for p in SAMPLES.glob("*.pdf")}
+    from backend.app.config import SAMPLE_SUFFIXES
+
+    samples = {p.stem for p in SAMPLES.iterdir()
+               if p.suffix.lower() in SAMPLE_SUFFIXES}
     assert samples == set(ALL_STEMS), "run scripts/extract_samples.py"
 
 
@@ -68,7 +72,7 @@ def test_every_recorded_response_still_validates(stem):
 
 @pytest.mark.parametrize("stem", ALL_STEMS)
 def test_extraction_read_the_total_the_invoice_was_built_with(stem, manifest):
-    expected = D(manifest[f"{stem}.pdf"]["total_raw"])
+    expected = D(manifest[stem]["total_raw"])
     assert extracted(stem).total == expected
 
 
@@ -80,6 +84,15 @@ def test_the_supplier_was_read_not_the_buyer(stem):
     assert "acme" not in invoice.vendor_name.lower()
     if invoice.vendor_gstin:
         assert invoice.vendor_gstin != "27AAACA1111A1Z8"      # the buyer's GSTIN
+
+
+def test_the_photo_sample_was_read_from_the_image():
+    fixture = load_fixture("10_phone_photo_vega")
+    assert fixture["input_kind"] == "image"
+    invoice = extracted("10_phone_photo_vega")
+    assert invoice.total == D("130980.00")
+    assert invoice.po_reference == "PO-4580"
+    assert invoice.invoice_number == "VI-2026-0533",         "the invoice number must survive a photograph"
 
 
 def test_the_scanned_sample_was_read_from_images():
@@ -125,12 +138,21 @@ def test_the_altered_bank_account_was_read_from_the_invoice():
 SEQUENCED = {"02b_split_po_nova_2of3", "02c_split_po_nova_3of3_overbilled"}
 
 
+def _prior_findings(row: dict) -> list[Finding]:
+    """What stages 1-2 would have observed about this sample's own format."""
+    if row["kind"] == "scanned":
+        return [Finding("SCANNED_DOCUMENT", "document_analysis",
+                        {"chars": 0, "pages": 1})]
+    if row["kind"] == "image":
+        return [Finding("IMAGE_UPLOAD", "document_analysis",
+                        {"format": "JPG", "width": 2127, "height": 2881})]
+    return []
+
+
 @pytest.mark.parametrize("stem", [s for s in ALL_STEMS if s not in SEQUENCED])
 def test_each_sample_reaches_its_expected_outcome(stem, reference, manifest):
-    row = manifest[f"{stem}.pdf"]
-    prior = ([Finding("SCANNED_DOCUMENT", "document_analysis",
-                      {"chars": 0, "pages": 1})]
-             if row["kind"] == "scanned" else [])
+    row = manifest[stem]
+    prior = _prior_findings(row)
 
     result = evaluate(extracted(stem), reference, f"hash-{stem}",
                       prior_findings=prior)

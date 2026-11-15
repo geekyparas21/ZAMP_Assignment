@@ -21,6 +21,27 @@ DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
 SAMPLES_DIR = Path(os.environ.get("SAMPLES_DIR", ROOT / "sample_invoices"))
 
 
+#: The file types the sample gallery may hold, longest-standing first. A
+#: sample is addressed by its stem alone ("00_happy_path_bharat_steel"), so the
+#: extension has to be resolved rather than assumed - the gallery now contains
+#: a JPG as well as PDFs.
+SAMPLE_SUFFIXES = (".pdf", ".png", ".jpg", ".jpeg", ".webp")
+
+
+def sample_path(key: str) -> Path | None:
+    """The file behind a sample key, or None if there is no such sample.
+
+    Resolves inside SAMPLES_DIR and refuses anything that escapes it, because
+    the key arrives from a public endpoint.
+    """
+    for suffix in SAMPLE_SUFFIXES:
+        candidate = (SAMPLES_DIR / f"{key}{suffix}").resolve()
+        if (candidate.is_file()
+                and SAMPLES_DIR.resolve() in candidate.parents):
+            return candidate
+    return None
+
+
 class Rules:
     """Typed, dotted access to rules.yaml with no silent defaults.
 

@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Loader2, ScanLine, Upload } from 'lucide-react'
+import { FileText, Image as ImageIcon, Loader2, ScanLine, Upload } from 'lucide-react'
 
 import { api } from '../api'
 import {
   Button, Card, CardHeader, ErrorNote, OutcomeChip, SkeletonRows,
 } from '../components/ui'
+
+// Kept in step with config/rules.yaml (ingest.accepted_formats and
+// max_file_mb). The server detects the real type from the file's bytes and
+// refuses anything else with a reason code; these two checks exist only to
+// save an obvious mistake a round trip.
+const ACCEPTED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.webp']
+const ACCEPTED_LABEL = 'PDF, PNG, JPG, JPEG or WEBP'
+const MAX_FILE_MB = 10
 
 export default function NewRun() {
   const navigate = useNavigate()
@@ -33,10 +41,13 @@ export default function NewRun() {
 
   function handleFile(file) {
     if (!file) return
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      // The pipeline refuses non-PDFs properly too, but saying so here avoids
-      // a round trip and a run that exists only to fail.
-      setError(`"${file.name}" is not a PDF. Upload the invoice as a PDF file.`)
+    const name = file.name.toLowerCase()
+    if (!ACCEPTED_EXTENSIONS.some((extension) => name.endsWith(extension))) {
+      setError(`"${file.name}" is not a format we can read. Upload the invoice as ${ACCEPTED_LABEL}.`)
+      return
+    }
+    if (file.size > MAX_FILE_MB * 1024 * 1024) {
+      setError(`"${file.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB, over the ${MAX_FILE_MB} MB limit. A photo at 2000 px on the long edge is plenty.`)
       return
     }
     begin(api.startUpload(file), 'upload')
@@ -80,11 +91,12 @@ export default function NewRun() {
           <Upload className="h-5 w-5" aria-hidden="true" />
         </div>
         <p className="mt-4 text-[15px] font-medium text-text">
-          {dragging ? 'Drop to start processing' : 'Drag an invoice PDF here'}
+          {dragging ? 'Drop to start processing' : 'Drag an invoice here — PDF or photo'}
         </p>
         <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-          Text PDFs and scanned images both work — the system works out which it
-          is and reads it accordingly.
+          {ACCEPTED_LABEL}, up to {MAX_FILE_MB} MB. Text PDFs, scans and phone
+          photos all work — the system works out which it is from the file
+          itself and reads it accordingly.
         </p>
         <div className="mt-5">
           <Button onClick={() => inputRef.current?.click()} disabled={starting === 'upload'}>
@@ -96,7 +108,7 @@ export default function NewRun() {
         <input
           ref={inputRef}
           type="file"
-          accept="application/pdf,.pdf"
+          accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp"
           className="sr-only"
           onChange={(event) => {
             handleFile(event.target.files?.[0])
@@ -123,14 +135,16 @@ export default function NewRun() {
                 >
                   <span
                     className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ring-1 transition-colors ${
-                      sample.kind === 'scanned'
-                        ? 'bg-warn-soft text-warn ring-warn/20'
-                        : 'bg-surface-2 text-muted ring-border group-hover:text-text-2'
+                      sample.kind === 'text'
+                        ? 'bg-surface-2 text-muted ring-border group-hover:text-text-2'
+                        : 'bg-warn-soft text-warn ring-warn/20'
                     }`}
                   >
-                    {sample.kind === 'scanned'
-                      ? <ScanLine className="h-4 w-4" aria-label="Scanned" />
-                      : <FileText className="h-4 w-4" aria-label="Text PDF" />}
+                    {sample.kind === 'image'
+                      ? <ImageIcon className="h-4 w-4" aria-label="Image upload" />
+                      : sample.kind === 'scanned'
+                        ? <ScanLine className="h-4 w-4" aria-label="Scanned" />
+                        : <FileText className="h-4 w-4" aria-label="Text PDF" />}
                   </span>
 
                   <span className="min-w-0 flex-1">

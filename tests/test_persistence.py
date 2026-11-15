@@ -101,19 +101,8 @@ def test_stage_detail_payloads_are_json_serialisable(vendors, purchase_orders,
 # ---------------------------------------------------------------------------
 # A full run against a temporary database
 # ---------------------------------------------------------------------------
-@pytest.fixture
-def temp_db(tmp_path, monkeypatch):
-    from backend.app import db as db_module
-    from backend.app.config import get_settings
-
-    url = f"sqlite:///{tmp_path / 'test.db'}"
-    monkeypatch.setenv("DATABASE_URL", url)
-    get_settings.cache_clear()
-    db_module.reset_engine()
-    db_module.init_db()
-    yield db_module
-    db_module.reset_engine()
-    get_settings.cache_clear()
+# `temp_db` lives in conftest.py: the image-upload tests run the same
+# pipeline against the same kind of throwaway database.
 
 
 class StubExtractor:
@@ -211,19 +200,20 @@ def test_a_held_run_does_not_move_the_po_balance(temp_db):
         assert po.amount_invoiced_to_date == D("0.00")
 
 
-def test_a_non_pdf_upload_fails_visibly(temp_db):
+def test_an_unsupported_upload_fails_visibly(temp_db):
+    """PNG and JPG are accepted now; a GIF still is not, and must say so."""
     from backend.app.models import Run, RunStep
     from backend.app.pipeline.runner import execute_run, new_run_id
 
     run_id = new_run_id()
-    outcome = execute_run(run_id, b"\x89PNG\r\n\x1a\n" + b"0" * 500, "scan.png")
+    outcome = execute_run(run_id, b"GIF89a" + b"0" * 500, "scan.gif")
 
     assert outcome == "FAILED"
     with Session(temp_db.get_engine()) as session:
         run = session.get(Run, run_id)
         assert run.status == "failed"
-        assert run.top_reason == "FILE_NOT_PDF"
-        assert "PNG" in run.explanation
+        assert run.top_reason == "FILE_TYPE_UNSUPPORTED"
+        assert "GIF" in run.explanation
         assert run.next_action                      # always actionable
         steps = session.exec(select(RunStep).where(RunStep.run_id == run_id)).all()
         assert {s.stage for s in steps if s.status == "failed"} >= {"ingest"}

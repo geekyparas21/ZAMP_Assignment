@@ -35,6 +35,10 @@ ORDER = [
     "06_quotation_not_invoice",
     "07_missing_invoice_number_bharat",
     "08_bank_mismatch_bharat",
+    "09_unknown_vendor_meridian",
+    # The image path: a phone photo, which must approve like any other
+    # invoice that matches its PO.
+    "10_phone_photo_vega",
 ]
 
 

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, FileText, RefreshCw, RotateCw } from 'lucide-react'
+import { ArrowLeft, FileText, RefreshCw, RotateCw, X, ZoomIn } from 'lucide-react'
 
 import { api, subscribeToRun } from '../api'
 import DecisionCard from '../components/DecisionCard'
 import StageTimeline from '../components/StageTimeline'
 import {
-  Button, Card, CardHeader, ErrorNote, OutcomeChip, Spinner,
-  confidenceTone, formatDuration,
+  Button, Card, CardHeader, ErrorNote, FileKindBadge, OutcomeChip, Spinner,
+  confidenceTone, fileKindOf, formatDuration,
 } from '../components/ui'
 
 export default function RunView() {
@@ -136,14 +136,16 @@ export default function RunView() {
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-4 px-5 py-4">
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold text-text">
-              {run?.vendor_name ?? run?.filename ?? 'Processing…'}
+            <h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold text-text">
+              <span className="truncate">
+                {run?.vendor_name ?? run?.filename ?? 'Processing…'}
+              </span>
+              {run && <FileKindBadge kind={fileKindOf(run)} />}
             </h1>
             <p className="tnum mt-1 text-sm text-muted">
               {run?.invoice_number ? `Invoice ${run.invoice_number}` : 'Reading the document…'}
               {run?.total_display && run.total_display !== '-' && ` · ₹${run.total_display}`}
               {run?.po_number && ` · ${run.po_number}`}
-              {run?.is_scanned && ' · scanned'}
             </p>
           </div>
           {isRunning && (
@@ -190,33 +192,97 @@ export default function RunView() {
 
         <div className="space-y-5">
           <ExtractedFields run={run} steps={steps} />
-          <Card className="overflow-hidden">
-            <CardHeader
-              title="The original document"
-              actions={run && (
-                <a
-                  href={api.fileUrl(run.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm font-medium text-accent hover:underline"
-                >
-                  Open
-                </a>
-              )}
-            />
-            {run
-              ? (
-                <iframe
-                  src={`${api.fileUrl(run.id)}#toolbar=0&view=FitH`}
-                  title="Invoice PDF"
-                  className="h-[560px] w-full border-0 bg-border"
-                />
-              )
-              : <Spinner label="Loading the document" />}
-          </Card>
+          <DocumentPanel run={run} />
         </div>
       </div>
     </div>
+  )
+}
+
+// The document the decision was made from. A PDF goes in the browser's own
+// viewer; an image is shown fitted to the panel, and clicking it opens a
+// full-screen view - a phone photo is unreadable at panel width, and checking
+// a held invoice against the page is exactly what a reviewer does next.
+function DocumentPanel({ run }) {
+  const [zoomed, setZoomed] = useState(false)
+  const kind = fileKindOf(run)
+  const isImage = kind === 'image'
+
+  useEffect(() => {
+    if (!zoomed) return
+    const onKey = (event) => { if (event.key === 'Escape') setZoomed(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [zoomed])
+
+  return (
+    <>
+      <Card className="overflow-hidden">
+        <CardHeader
+          title="The original document"
+          actions={run && (
+            <a
+              href={api.fileUrl(run.id)}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-medium text-accent hover:underline"
+            >
+              Open
+            </a>
+          )}
+        />
+        {!run && <Spinner label="Loading the document" />}
+        {run && isImage && (
+          <button
+            type="button"
+            onClick={() => setZoomed(true)}
+            title="Click to enlarge"
+            className="group relative block h-[560px] w-full cursor-zoom-in bg-surface-2"
+          >
+            <img
+              src={api.fileUrl(run.id)}
+              alt={`Invoice uploaded as ${run.filename ?? 'an image'}`}
+              className="h-full w-full object-contain"
+            />
+            <span className="pointer-events-none absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-lg bg-text/80 px-2.5 py-1.5 text-xs font-medium text-surface opacity-0 transition-opacity group-hover:opacity-100">
+              <ZoomIn className="h-3.5 w-3.5" aria-hidden="true" />
+              Click to zoom
+            </span>
+          </button>
+        )}
+        {run && !isImage && (
+          <iframe
+            src={`${api.fileUrl(run.id)}#toolbar=0&view=FitH`}
+            title="Invoice PDF"
+            className="h-[560px] w-full border-0 bg-border"
+          />
+        )}
+      </Card>
+
+      {zoomed && run && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Invoice image, enlarged"
+          onClick={() => setZoomed(false)}
+          className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-text/80 p-4 backdrop-blur-sm"
+        >
+          <img
+            src={api.fileUrl(run.id)}
+            alt={`Invoice uploaded as ${run.filename ?? 'an image'}`}
+            className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
+          />
+          <button
+            type="button"
+            onClick={() => setZoomed(false)}
+            aria-label="Close the enlarged image"
+            className="absolute top-4 right-4 grid h-9 w-9 place-items-center rounded-full bg-surface text-text-2 hover:text-text"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+    </>
   )
 }
 

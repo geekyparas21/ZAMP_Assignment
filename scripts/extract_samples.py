@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from backend.app.config import get_rules, get_settings  # noqa: E402
+from backend.app.config import SAMPLE_SUFFIXES, get_rules, get_settings  # noqa: E402
 from backend.app.money import format_inr  # noqa: E402
 from backend.app.services.document import analyse  # noqa: E402
 from backend.app.services.extractor import (ExtractionError,  # noqa: E402
@@ -58,14 +58,15 @@ def main() -> None:
     settings = get_settings()
     FIXTURES.mkdir(parents=True, exist_ok=True)
 
-    pdfs = sorted(SAMPLES.glob("*.pdf"))
+    files = sorted(path for path in SAMPLES.iterdir()
+                   if path.suffix.lower() in SAMPLE_SUFFIXES)
     if args.only:
-        pdfs = [p for p in pdfs if any(p.name.startswith(k) for k in args.only)]
-    if not pdfs:
-        raise SystemExit("no matching sample PDFs")
+        files = [p for p in files if any(p.name.startswith(k) for k in args.only)]
+    if not files:
+        raise SystemExit("no matching sample invoices")
 
     print(f"model: {settings.gemini_model}  fallback: {settings.gemini_fallback_model}")
-    print(f"{len(pdfs)} sample(s)\n")
+    print(f"{len(files)} sample(s)\n")
 
     extractor = None
     if not args.dry_run:
@@ -75,10 +76,10 @@ def main() -> None:
     tokens = 0
     failures: list[str] = []
 
-    for pdf in pdfs:
-        data = pdf.read_bytes()
-        document, _ = analyse(data, rules)
-        label = f"{pdf.name:<40}"
+    for source in files:
+        data = source.read_bytes()
+        document, _ = analyse(data, rules, source.name)
+        label = f"{source.name:<40}"
 
         if args.dry_run:
             print(f"{label} {document.path_label:<16} "
@@ -89,13 +90,13 @@ def main() -> None:
         try:
             result = extractor.extract(document)
         except ExtractionError as exc:
-            failures.append(f"{pdf.name}: {exc.code} {exc.evidence}")
+            failures.append(f"{source.name}: {exc.code} {exc.evidence}")
             print(f"{label} FAILED  {exc.code}")
             continue
 
         calls += result.attempts
         tokens += result.total_tokens
-        (FIXTURES / f"{pdf.stem}.json").write_text(
+        (FIXTURES / f"{source.stem}.json").write_text(
             json.dumps(serialise(result), indent=2), encoding="utf-8")
 
         inv = result.invoice
